@@ -1,0 +1,238 @@
+.rehearsal-page {
+  padding-bottom: 130px; /* clear the fixed bottom bar */
+}
+
+/* ---- Collapsible sticky header ---- */
+
+.rehearsal-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.rehearsal-title {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 12px 18px;
+}
+
+.rehearsal-title-text {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.rehearsal-chevron {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.rehearsal-settings {
+  padding: 0 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selects-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selects-row select {
+  flex: 1;
+  min-width: 130px;
+}
+
+.checks-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.checks-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.checks-row small {
+  color: var(--ink-soft);
+}
+
+/* ---- Dialogue cards ---- */
+
+.dialogue-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialogue-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dialogue-card.active {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  background: #fffdf8;
+  box-shadow: 0 2px 10px rgba(139, 38, 53, 0.12);
+}
+
+.dialogue-card.muted {
+  background: var(--accent-soft);
+  border-left-color: var(--gold);
+}
+
+.dialogue-card.muted.active {
+  border-left-color: var(--accent);
+}
+
+.dialogue-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dialogue-character {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.tts-hint {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.dialogue-text {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.dialogue-card.muted.hide-text .dialogue-text {
+  filter: blur(8px);
+  user-select: none;
+}
+
+/* ---- "À vous…" overlay ---- */
+
+.wait-indicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 700;
+  padding: 22px 40px;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  z-index: 150;
+  animation: appear 0.25s ease-out;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ---- Fixed bottom controls ---- */
+
+.controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
+  z-index: 100;
+}
+
+.progress-container {
+  height: 14px;
+  background: var(--paper-dark);
+  border-radius: 999px;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.15s;
+}
+
+.buttons-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.ctrl-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.ctrl-btn:hover {
+  background: var(--paper-dark);
+}
+
+.ctrl-btn.play {
+  width: 58px;
+  height: 58px;
+  font-size: 22px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

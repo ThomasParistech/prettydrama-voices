@@ -1,0 +1,72 @@
+[
+  {
+    "name": "spec example: punctuation removed, apostrophes and hyphens kept",
+    "input": "Silence! C'est moi le chef ici. Mettez-vous ça dans l'crâne.",
+    "expected": "silence c'est moi le chef ici mettez-vous ça dans l'crâne"
+  },
+  {
+    "name": "trailing exclamation",
+    "input": "Mais on va être comme des coqs en pâte!",
+    "expected": "mais on va être comme des coqs en pâte"
+  },
+  {
+    "name": "accents are kept",
+    "input": "Où étais-tu passé, hé, là-bas ?",
+    "expected": "où étais-tu passé hé là-bas"
+  },
+  {
+    "name": "uppercase folded",
+    "input": "SILENCE ! ÇA SUFFIT.",
+    "expected": "silence ça suffit"
+  },
+  {
+    "name": "curly apostrophe unified with straight apostrophe",
+    "input": "C’est l’heure",
+    "expected": "c'est l'heure"
+  },
+  {
+    "name": "em/en dashes unified",
+    "input": "Oui — enfin… non – peut-être",
+    "expected": "oui - enfin non - peut-être"
+  },
+  {
+    "name": "multiple spaces, tabs and newlines collapsed",
+    "input": "  Bonjour\t\tmon   ami \n comment  vas-tu  ",
+    "expected": "bonjour mon ami comment vas-tu"
+  },
+  {
+    "name": "quotes, parentheses, guillemets removed",
+    "input": "« Attention » (dit-il) \"vraiment\"",
+    "expected": "attention dit-il vraiment"
+  },
+  {
+    "name": "digits kept",
+    "input": "Rendez-vous à 8 heures, salle 12.",
+    "expected": "rendez-vous à 8 heures salle 12"
+  },
+  {
+    "name": "ellipsis character removed",
+    "input": "Eh bien… voilà…",
+    "expected": "eh bien voilà"
+  },
+  {
+    "name": "semicolons and colons removed",
+    "input": "Un: deux; trois?!",
+    "expected": "un deux trois"
+  },
+  {
+    "name": "empty string",
+    "input": "",
+    "expected": ""
+  },
+  {
+    "name": "only punctuation",
+    "input": "?! … ; .",
+    "expected": ""
+  },
+  {
+    "name": "non-breaking spaces collapsed",
+    "input": "Bonjour ! Ça va ?",
+    "expected": "bonjour ça va"
+  }
+]

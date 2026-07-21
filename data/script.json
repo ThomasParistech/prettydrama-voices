@@ -1,0 +1,60 @@
+{
+  "title": "Pièce d'exemple",
+  "characters": [
+    {
+      "id": "5ba357dd-3f6b-4280-a990-8f6952e1608f",
+      "name": "Colombine"
+    },
+    {
+      "id": "0408d81e-4971-4cd9-b6a0-5a290e27df03",
+      "name": "Arlequin"
+    }
+  ],
+  "acts": [
+    {
+      "title": "Acte I",
+      "scenes": [
+        {
+          "title": "Scène 1",
+          "lines": [
+            {
+              "id": "5677d200-ef7e-47fe-aced-ad67c35234b1",
+              "characterId": "5ba357dd-3f6b-4280-a990-8f6952e1608f",
+              "text": "Arlequin ! Où te caches-tu encore ?"
+            },
+            {
+              "id": "e8596117-334d-4c24-a981-a3f5e50a335d",
+              "characterId": "0408d81e-4971-4cd9-b6a0-5a290e27df03",
+              "text": "Ici, derrière le rideau. Je répète mon rôle !"
+            },
+            {
+              "id": "f87d74ae-79de-4165-8e23-c75c6873b3e2",
+              "characterId": "5ba357dd-3f6b-4280-a990-8f6952e1608f",
+              "text": "Ton rôle ? Tu n'as que trois répliques."
+            },
+            {
+              "id": "cc135ab5-08ae-48ec-a10a-4797a6323ce0",
+              "characterId": "0408d81e-4971-4cd9-b6a0-5a290e27df03",
+              "text": "Justement : je veux qu'elles soient parfaites."
+            }
+          ]
+        },
+        {
+          "title": "Scène 2",
+          "lines": [
+            {
+              "id": "1bc295dd-8d84-4c70-b084-2c01c00ead8a",
+              "characterId": "5ba357dd-3f6b-4280-a990-8f6952e1608f",
+              "text": "Le public arrive. Es-tu prêt, cette fois ?"
+            },
+            {
+              "id": "11d82f6e-5709-4b04-9d6f-22734d53b76e",
+              "characterId": "0408d81e-4971-4cd9-b6a0-5a290e27df03",
+              "text": "Prêt ? Je suis né prêt. Enfin… presque."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

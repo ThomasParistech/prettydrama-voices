@@ -1,0 +1,164 @@
+.pick-title {
+  font-size: 34px;
+  margin-bottom: 4px;
+}
+
+.pick-subtitle {
+  color: var(--ink-soft);
+  margin: 0 0 20px;
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.character-card {
+  padding: 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.character-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(43, 36, 32, 0.15);
+}
+
+.character-card-name {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.character-card-info {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.recorder-container {
+  padding-bottom: 120px;
+}
+
+.recorder-intro {
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 14.5px;
+}
+
+.recorder-intro p {
+  margin: 0;
+}
+
+.mic-error {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 8px !important;
+}
+
+.group-title {
+  font-size: 22px;
+  margin: 24px 0 10px;
+  color: var(--accent);
+}
+
+.line-card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.line-card.recording {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(139, 38, 53, 0.25);
+}
+
+.line-card-top {
+  margin-bottom: 6px;
+}
+
+.line-card-text {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.45;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.line-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.record-btn {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.record-btn.stop {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 38, 53, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(139, 38, 53, 0);
+  }
+}
+
+.take-audio {
+  height: 40px;
+  max-width: 100%;
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Sticky export bar */
+.zip-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  z-index: 100;
+}
+
+.zip-warning {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.zip-done {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.zip-btn {
+  font-size: 16px;
+}
+
+@media (max-width: 600px) {
+  .zip-bar {
+    justify-content: center;
+  }
+}

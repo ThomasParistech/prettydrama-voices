@@ -1,0 +1,90 @@
+.home {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-hero {
+  text-align: center;
+  padding: 60px 20px 30px;
+}
+
+.home-brand {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.home-play-title {
+  font-size: 44px;
+  margin-bottom: 8px;
+}
+
+.home-tagline {
+  color: var(--ink-soft);
+  font-size: 17px;
+  margin: 0;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+.home-card {
+  padding: 26px 22px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.home-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(43, 36, 32, 0.16);
+}
+
+.home-card-emoji {
+  font-size: 34px;
+}
+
+.home-card-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.home-card-who {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.home-card-desc {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+
+.home-footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 30px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.home-footer a {
+  color: var(--accent);
+}
