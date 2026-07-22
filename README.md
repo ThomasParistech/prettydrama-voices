@@ -21,13 +21,13 @@ _Mis à jour le 22/07/2026 12:29 UTC._
 
 ## ⬆️ Raccourcis — déposer sur GitHub
 
-> Les deux boutons du quotidien. Chacun ouvre l'écran de dépôt de **votre** dépôt, avec le
-> message de commit déjà rempli : glissez le fichier dans la zone, puis cliquez sur
-> **« Commit changes »**. (Rien à taper, aucun dossier à chercher.)
+> Les deux boutons du quotidien. Chacun ouvre l'écran de dépôt de **votre** dépôt :
+> glissez le fichier dans la zone, puis cliquez sur **« Commit changes »**.
+> (Aucun dossier à chercher ; laissez le message de commit proposé par GitHub.)
 
-### 🎙️ &nbsp; [Déposer des voix reçues (`voix-xxx.zip`) →](../../upload/master/uploads/voix?message=Ajout%20de%20voix)
+### 🎙️ &nbsp; [Déposer des voix reçues (`voix-xxx.zip`) →](../../upload/master/uploads/voix)
 
-### ✍️ &nbsp; [Mettre à jour le script de la pièce (`script.json`) →](../../upload/master/data?message=Mise%20%C3%A0%20jour%20du%20script)
+### ✍️ &nbsp; [Mettre à jour le script de la pièce (`script.json`) →](../../upload/master/data)
 
 ---
 
@@ -65,7 +65,7 @@ l'adresse indiquée sur cette même page **Settings → Pages** (quelque chose c
    parle avec le menu déroulant de chaque réplique.
 4. Quand vous avez fini : cliquez sur **« ⬇ Télécharger le script »**. Un fichier
    `script.json` arrive dans vos téléchargements.
-5. Utilisez le raccourci **[✍️ Mettre à jour le script de la pièce](../../upload/master/data?message=Mise%20%C3%A0%20jour%20du%20script)**
+5. Utilisez le raccourci **[✍️ Mettre à jour le script de la pièce](../../upload/master/data)**
    (en haut de cette page) : **glissez-déposez** le fichier `script.json`, puis cliquez sur
    **« Commit changes »**. (Le fichier remplace l'ancien — c'est normal.)
 
@@ -81,7 +81,7 @@ puis téléchargent un fichier `voix-xxx.zip` qu'ils vous envoient **comme ils v
 ### 5. Déposez les voix reçues
 
 À chaque fichier `voix-xxx.zip` reçu : utilisez le raccourci
-**[🎙️ Déposer des voix reçues](../../upload/master/uploads/voix?message=Ajout%20de%20voix)**
+**[🎙️ Déposer des voix reçues](../../upload/master/uploads/voix)**
 (en haut de cette page), **glissez-déposez** le ou les ZIP, puis **« Commit changes »**.
 
 C'est tout ! Le site s'occupe du reste automatiquement : il nettoie le son, met les voix
