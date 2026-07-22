@@ -223,13 +223,6 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.header-page-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
 .play-header-toggle {
   flex: 1;
   min-width: 0;
@@ -299,11 +292,11 @@ textarea:focus {
 }
 
 .progress-container {
-  /* Zone tactile de 40 px ; la piste visible reste 14 px (le fond est
-     clippé au content-box) et les marges négatives annulent le padding
-     pour ne rien décaler dans la barre. */
+  /* Zone tactile de 40 px ; la piste visible reste fine (6 px, fond clippé
+     au content-box) et les marges négatives annulent le padding pour ne
+     rien décaler dans la barre. */
   height: 40px;
-  padding: 13px 0;
+  padding: 17px 0;
   margin: -13px 0 -3px;
   background: var(--paper-dark);
   background-clip: content-box;
@@ -342,6 +335,10 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   color: var(--ink);
+}
+
+.ctrl-btn svg {
+  display: block;
 }
 
 .ctrl-btn:hover:not(:disabled) {
@@ -413,6 +410,12 @@ textarea:focus {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  /* Les autres personnages restent en gris doux ; seul le personnage
+     sélectionné (.mine) prend la couleur du thème (comme v1). */
+  color: var(--ink-soft);
+}
+
+.dialogue-card.mine .dialogue-character {
   color: var(--accent);
 }
 

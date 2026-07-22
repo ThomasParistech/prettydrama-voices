@@ -156,7 +156,6 @@ export default function App() {
   return (
     <>
       <PlayHeader
-        label="Éditeur"
         title={script.title || "Pièce sans titre"}
         actions={
           <>
@@ -212,15 +211,15 @@ export default function App() {
           déposez le fichier <code>script.json</code> dans le dossier <code>data/</code> de votre
           dépôt GitHub (il remplacera l'ancien).
         </p>
-      </PlayHeader>
-
-      <main className="editor-main">
-        {loadInfo && <p className="load-info">{loadInfo}</p>}
 
         <p className="editor-tip">
           Astuce : dans une réplique, la touche <strong>Entrée</strong> crée la réplique suivante
           (<strong>Maj + Entrée</strong> pour un retour à la ligne).
         </p>
+      </PlayHeader>
+
+      <main className="editor-main">
+        {loadInfo && <p className="load-info">{loadInfo}</p>}
 
         {act && (
             <div className="act-header">

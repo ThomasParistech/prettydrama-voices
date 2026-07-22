@@ -4,6 +4,7 @@ import useScrollToActiveCard from "../shared/useScrollToActiveCard.js";
 import PlayHeader from "../shared/PlayHeader.jsx";
 import ProgressBar from "../shared/ProgressBar.jsx";
 import { myLineNumbers } from "../shared/data.js";
+import { PlayIcon, PauseIcon, PrevIcon, NextIcon, SkipPrevIcon, SkipNextIcon } from "../shared/icons.jsx";
 import useManifest from "../shared/useManifest.js";
 import useTts from "./useTts.js";
 import "./rehearsal.css";
@@ -234,7 +235,7 @@ export default function App() {
 
   return (
     <div className="rehearsal-page">
-      <PlayHeader label="Répétition" title={manifest.title || "Répétition"}>
+      <PlayHeader title={manifest.title || "Répétition"}>
         <div className="selects-row">
               <select value={actIndex} onChange={(e) => changeAct(Number(e.target.value))}>
                 {acts.map((a, i) => (
@@ -257,7 +258,13 @@ export default function App() {
                   );
                 })}
               </select>
-              <select value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
+            </div>
+            <div className="character-row">
+              <select
+                className="character-select"
+                value={characterId}
+                onChange={(e) => setCharacterId(e.target.value)}
+              >
                 <option value="">Écoute seule</option>
                 {manifest.characters.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -265,28 +272,28 @@ export default function App() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="checks-row">
-              <label>
-                <input type="checkbox" checked={muet} onChange={(e) => setMuet(e.target.checked)} />
-                Muet <small>(je dis mes répliques moi-même)</small>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={hideText}
-                  onChange={(e) => setHideText(e.target.checked)}
-                />
-                Cacher mon texte
-              </label>
-              <label>
-                <input type="checkbox" checked={bip} onChange={(e) => setBip(e.target.checked)} />
-                Bip
-              </label>
-              <label>
-                <input type="checkbox" checked={avant} onChange={(e) => setAvant(e.target.checked)} />
-                Avant <small>(se placer sur la réplique précédente)</small>
-              </label>
+              <div className="checks-row">
+                <label title="Je dis mes répliques moi-même : leur audio est coupé">
+                  <input type="checkbox" checked={muet} onChange={(e) => setMuet(e.target.checked)} />
+                  Muet
+                </label>
+                <label title="Flouter le texte de mes répliques">
+                  <input
+                    type="checkbox"
+                    checked={hideText}
+                    onChange={(e) => setHideText(e.target.checked)}
+                  />
+                  Cacher mon texte
+                </label>
+                <label title="Bip sonore avant chacune de mes répliques">
+                  <input type="checkbox" checked={bip} onChange={(e) => setBip(e.target.checked)} />
+                  Bip
+                </label>
+                <label title="Les sauts « ma réplique » se placent sur la réplique précédente">
+                  <input type="checkbox" checked={avant} onChange={(e) => setAvant(e.target.checked)} />
+                  Avant
+                </label>
+              </div>
         </div>
       </PlayHeader>
 
@@ -339,21 +346,25 @@ export default function App() {
         <div className="buttons-row">
           {characterId !== "" && (
             <button className="ctrl-btn" title="Ma réplique précédente" onClick={goToPrevMy}>
-              ⏮
+              <SkipPrevIcon />
             </button>
           )}
           <button className="ctrl-btn" title="Réplique précédente" onClick={() => goTo(index - 1)}>
-            ◀
+            <PrevIcon />
           </button>
-          <button className="ctrl-btn play" title="Lecture / pause" onClick={togglePlay}>
-            {isPlaying ? "⏸" : "▶"}
+          <button
+            className={`ctrl-btn play${isPlaying ? " is-playing" : ""}`}
+            title="Lecture / pause"
+            onClick={togglePlay}
+          >
+            {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
           <button className="ctrl-btn" title="Réplique suivante" onClick={() => goTo(index + 1)}>
-            ▶
+            <NextIcon />
           </button>
           {characterId !== "" && (
             <button className="ctrl-btn" title="Ma réplique suivante" onClick={goToNextMy}>
-              ⏭
+              <SkipNextIcon />
             </button>
           )}
         </div>

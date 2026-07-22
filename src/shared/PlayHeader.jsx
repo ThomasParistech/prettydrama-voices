@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 
 // Collapsible sticky header shared by the rehearsal, recording and editor
-// pages: brand, page label and play title on one row (plus optional action
-// buttons on the right); a settings area (children) folded/unfolded by
-// clicking the title.
-export default function PlayHeader({ label, title, actions, children }) {
+// pages: brand and play title on one row (plus optional action buttons on the
+// right); a settings area (children) folded/unfolded by clicking the title.
+// (No mode label: it crowded the bar on mobile and was redundant with the
+// page itself.)
+export default function PlayHeader({ title, actions, children }) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -13,7 +14,6 @@ export default function PlayHeader({ label, title, actions, children }) {
         <a className="header-brand" href="./index.html">
           🎭 PrettyDrama
         </a>
-        <span className="header-page-label">{label}</span>
         <button
           className="play-header-toggle"
           title="Afficher ou masquer les réglages"

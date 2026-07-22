@@ -5,6 +5,7 @@ import useScrollToActiveCard from "../shared/useScrollToActiveCard.js";
 import PlayHeader from "../shared/PlayHeader.jsx";
 import ProgressBar from "../shared/ProgressBar.jsx";
 import { setBeforeUnloadGuard, downloadBlob, slugify, myLineNumbers } from "../shared/data.js";
+import { PlayIcon, PauseIcon, StopIcon, PrevIcon, NextIcon, DownloadIcon } from "../shared/icons.jsx";
 import useManifest from "../shared/useManifest.js";
 import useRecorder, { extensionForMimeType } from "./useRecorder.js";
 import "./recorder.css";
@@ -166,7 +167,7 @@ export default function App() {
 
   return (
     <div className="recorder-page">
-      <PlayHeader label="Enregistrement" title={manifest.title || "Enregistrement"}>
+      <PlayHeader title={manifest.title || "Enregistrement"}>
         <div className="selects-row">
           <select
             value={actIndex}
@@ -229,15 +230,6 @@ export default function App() {
         {downloaded && takenCount > 0 && (
           <p className="zip-note done">✓ Fichier téléchargé. Envoyez-le à votre responsable.</p>
         )}
-      </PlayHeader>
-
-      <main className="dialogue-container" ref={listRef}>
-        {characterId === "" && (
-          <div className="empty-state">Choisissez votre personnage dans le bandeau ci-dessus.</div>
-        )}
-        {characterId !== "" && myLines.length === 0 && (
-          <div className="empty-state">Vous n'avez aucune réplique dans cette scène.</div>
-        )}
         {characterId !== "" && myLines.length > 0 && (
           <div className="status-legend">
             <span>
@@ -250,6 +242,15 @@ export default function App() {
               <span className="st-pill fresh">↓</span> À télécharger
             </span>
           </div>
+        )}
+      </PlayHeader>
+
+      <main className="dialogue-container" ref={listRef}>
+        {characterId === "" && (
+          <div className="empty-state">Choisissez votre personnage dans le bandeau ci-dessus.</div>
+        )}
+        {characterId !== "" && myLines.length === 0 && (
+          <div className="empty-state">Vous n'avez aucune réplique dans cette scène.</div>
         )}
         {lines.map((line) => {
           const mine = characterId !== "" && line.characterId === characterId;
@@ -334,7 +335,7 @@ export default function App() {
             disabled={isRecording || safeMyIndex <= 0}
             onClick={() => setMyIndex(safeMyIndex - 1)}
           >
-            ◀
+            <PrevIcon />
           </button>
           <button
             className={`ctrl-btn play mic ${isRecording ? "stop" : ""}`}
@@ -347,7 +348,7 @@ export default function App() {
             onClick={toggleRecord}
           >
             {isRecording ? (
-              "⏹"
+              <StopIcon />
             ) : (
               <svg
                 className="mic-svg"
@@ -370,7 +371,7 @@ export default function App() {
             disabled={isRecording || safeMyIndex >= myLines.length - 1}
             onClick={() => setMyIndex(safeMyIndex + 1)}
           >
-            ▶
+            <NextIcon />
           </button>
           <span className="controls-side right">
             <button
@@ -379,7 +380,7 @@ export default function App() {
               disabled={takenCount === 0}
               onClick={downloadZip}
             >
-              ⬇ <span className="download-label">Télécharger </span>({takenCount})
+              <DownloadIcon /> ({takenCount})
             </button>
           </span>
         </div>
@@ -415,6 +416,8 @@ function TakePlayer({ src, seed, fresh }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const bars = useMemo(() => waveHeights(seed), [seed]);
+  // Fraction lue (0..1) : colore l'onde jusqu'à la tête de lecture.
+  const progress = duration > 0 ? Math.min(1, time / duration) : 0;
 
   return (
     <div
@@ -430,14 +433,18 @@ function TakePlayer({ src, seed, fresh }) {
           else audio.pause();
         }}
       >
-        {playing ? "❚❚" : <span className="play-glyph">▶</span>}
+        {playing ? <PauseIcon /> : <PlayIcon />}
       </button>
       <span className="player-time">
         {formatTime(time)} / {formatTime(duration)}
       </span>
       <span className="player-wave">
         {bars.map((h, i) => (
-          <span key={i} style={{ height: `${h}%` }} />
+          <span
+            key={i}
+            className={(i + 0.5) / bars.length <= progress ? "played" : ""}
+            style={{ height: `${h}%` }}
+          />
         ))}
       </span>
       <audio

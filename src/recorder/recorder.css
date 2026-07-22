@@ -96,15 +96,14 @@
   background: var(--rec-fresh);
 }
 
+/* Légende des 3 statuts — vit dans le bandeau repliable (plus dans la liste). */
 .status-legend {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px 18px;
   flex-wrap: wrap;
   font-size: 12.5px;
   color: var(--ink-soft);
-  padding: 0 2px 10px;
-  border-bottom: 1px solid var(--border);
 }
 
 .status-legend > span {
@@ -145,9 +144,10 @@
   border-radius: 50%;
 }
 
-/* Optical centering of the ▶ glyph inside the circle. */
-.play-glyph {
-  padding-left: 2px;
+.player-play svg {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
 
 .card-player.done .player-play {
@@ -177,14 +177,25 @@
 .player-wave span {
   width: 2px;
   border-radius: 1px;
+  transition: background 0.1s linear;
 }
 
+/* Barres non encore lues : teinte atténuée. Les barres « .played » (avant la
+   tête de lecture) prennent la couleur pleine → progression visible. */
 .card-player.done .player-wave span {
-  background: var(--rec-done-wave);
+  background: color-mix(in srgb, var(--rec-done-wave) 50%, transparent);
+}
+
+.card-player.done .player-wave span.played {
+  background: var(--rec-done);
 }
 
 .card-player.fresh .player-wave span {
-  background: var(--rec-fresh-wave);
+  background: color-mix(in srgb, var(--rec-fresh-wave) 50%, transparent);
+}
+
+.card-player.fresh .player-wave span.played {
+  background: var(--rec-fresh);
 }
 
 .dialogue-card.own.recording {
@@ -230,6 +241,9 @@
   white-space: nowrap;
 }
 
+/* Le libellé « Télécharger » a été retiré partout (icône + nombre + title) :
+   présentation identique mobile / PC, barre allégée des deux côtés. */
+
 .mic-svg {
   width: 24px;
   height: 24px;
@@ -249,16 +263,4 @@
 
 .zip-note.done {
   color: var(--ok);
-}
-
-@media (max-width: 600px) {
-  .controls-side:not(.right) {
-    display: none; /* keep mic centered, download visible */
-  }
-
-  /* « ⬇ Télécharger (N) » ne tient pas à 375px avec les 3 boutons ronds :
-     on ne garde que « ⬇ (N) », le title du bouton porte le libellé complet. */
-  .download-label {
-    display: none;
-  }
 }

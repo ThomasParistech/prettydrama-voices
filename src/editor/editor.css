@@ -231,7 +231,7 @@ h3 {
 .editor-tip {
   font-size: 13px;
   color: var(--ink-soft);
-  margin: 0 2px 14px;
+  margin: 0;
 }
 
 .act-header {
