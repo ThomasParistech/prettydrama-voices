@@ -33,6 +33,21 @@ export default function useTts() {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
+  // iOS/Safari mobile: speechSynthesis n'a le droit de parler que s'il a été
+  // amorcé au moins une fois DANS un geste utilisateur. Sans ça, la 1re
+  // réplique TTS déclenchée par un callback (fin d'un mp3, timer) échoue en
+  // silence — ni onend ni onerror — et la lecture reste figée. À appeler
+  // depuis le clic Lecture, comme la création de l'AudioContext.
+  const unlock = useCallback(() => {
+    if (!("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.resume();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(" "));
+    } catch {
+      /* pas de synthèse dispo : le fallback minuté prend le relais */
+    }
+  }, []);
+
   // speak(text, onEnd): onEnd fires once, asynchronously, whether the
   // utterance ends, errors, or TTS is unsupported (timed fallback).
   const speak = useCallback(
@@ -65,5 +80,5 @@ export default function useTts() {
     [cancel]
   );
 
-  return { speak, cancel };
+  return { speak, cancel, unlock };
 }

@@ -2,19 +2,9 @@
    dialogue, barre de contrôle basse) sont partagés dans shared/theme.css.
    Ici : uniquement les états propres à la répétition. */
 
-/* Personnage sur sa propre ligne, cases à cocher juste à côté (comme v1) ;
-   ça passe sous le select quand la largeur manque. */
-.character-row {
-  display: flex;
-  align-items: center;
-  gap: 8px 18px;
-  flex-wrap: wrap;
-}
-
-.character-select {
-  min-width: 160px;
-}
-
+/* .character-row / .character-select sont partagés (shared/theme.css) : le
+   personnage est sur sa propre ligne dans les deux pages. Ici : uniquement les
+   cases à cocher, propres à la répétition, qui se rangent à côté du select. */
 .checks-row {
   display: flex;
   gap: 10px 18px;

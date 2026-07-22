@@ -10,7 +10,7 @@ export default function ProgressBar({ value, count, onSeek, disabled = false }) 
     if (disabled || count === 0) return;
     const rect = ref.current.getBoundingClientRect();
     const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    onSeek(Math.min(Math.floor(fraction * count), count - 1));
+    onSeek(Math.round(fraction * (count - 1)));
   };
 
   const onKeyDown = (e) => {
@@ -48,7 +48,11 @@ export default function ProgressBar({ value, count, onSeek, disabled = false }) 
     >
       <div
         className="progress-fill"
-        style={{ width: count ? `${((value + 1) / count) * 100}%` : "0%" }}
+        style={{ width: count > 1 ? `${(value / (count - 1)) * 100}%` : "0%" }}
+      />
+      <div
+        className="progress-thumb"
+        style={{ left: count > 1 ? `${(value / (count - 1)) * 100}%` : "0%" }}
       />
     </div>
   );

@@ -39,8 +39,8 @@ textarea:focus {
    thème partagé (que le :root local re-skinne en violet), hover compris —
    la règle hover du thème (var(--accent-dark)) s'applique telle quelle. */
 .btn.primary {
-  background: #8b2635;
-  border-color: #8b2635;
+  background: var(--header-accent);
+  border-color: var(--header-accent);
 }
 
 /* Le re-skin « Rail » couvre aussi le bouton destructif (modal de
@@ -403,7 +403,23 @@ h3 {
   margin-bottom: 0;
 }
 
+/* The button fills the whole band so a click anywhere in the (row-wide)
+   hover zone inserts — no need to aim for the centred pill. */
 .insert-zone button {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Purely visual pill, centred inside the full-width hit area. */
+.insert-pill {
   font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 500;
@@ -413,17 +429,16 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 10px;
-  cursor: pointer;
   opacity: 0;
   transition: opacity 0.12s;
 }
 
-.insert-zone:hover button,
-.insert-zone button:focus-visible {
+.insert-zone:hover .insert-pill,
+.insert-zone button:focus-visible .insert-pill {
   opacity: 1;
 }
 
-.insert-zone button:hover {
+.insert-zone button:hover .insert-pill {
   color: var(--ink);
   border-color: var(--ink-soft);
 }
@@ -481,5 +496,34 @@ h3 {
   .line-text {
     flex-basis: 100%;
     order: 3;
+  }
+
+  /* Cibles tactiles ≥ 40 px sur mobile, sans grossir les glyphes : on agrandit
+     la zone cliquable des micro-boutons de l'éditeur (poignée, ✕ de puce et de
+     réplique). */
+  .drag-handle,
+  .chip-delete,
+  .line-delete {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* La pastille de couleur reste visuellement à 15 px : sa zone cliquable est
+     étendue à 40 px par un pseudo-élément centré (le clic sur ::after déclenche
+     bien le bouton hôte). */
+  .character-swatch {
+    position: relative;
+  }
+  .character-swatch::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
   }
 }

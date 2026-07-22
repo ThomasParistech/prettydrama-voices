@@ -11,7 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from process_uploads import MAX_CLIPS_PER_ZIP, ZipError, parse_manifest
+from process_uploads import (
+    MAX_CLIPS_PER_ZIP,
+    ZipError,
+    parse_manifest,
+    read_member_capped,
+)
 
 
 def make_archive(members: dict, manifest=None):
@@ -107,6 +112,23 @@ class TestParseManifest(unittest.TestCase):
         archive = make_archive({}, manifest=manifest)
         with self.assertRaises(ZipError):
             parse_manifest(archive)
+
+
+class TestReadMemberCapped(unittest.TestCase):
+    """The size caps count the REAL decompressed bytes: a member whose header
+    lies about its size (a highly compressible payload) must still be rejected
+    once it exceeds the cap, not trusted."""
+
+    def test_member_under_cap_is_returned(self):
+        archive = make_archive({"clip.webm": b"x" * 100})
+        self.assertEqual(read_member_capped(archive, "clip.webm", 200), b"x" * 100)
+
+    def test_member_over_cap_is_rejected(self):
+        # 10 kB of zeros compresses to a few bytes in the ZIP header, but the
+        # real (decompressed) size is what the cap must enforce.
+        archive = make_archive({"clip.webm": b"\0" * 10_000})
+        with self.assertRaises(ZipError):
+            read_member_capped(archive, "clip.webm", 1000)
 
 
 if __name__ == "__main__":

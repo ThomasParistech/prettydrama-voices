@@ -160,6 +160,9 @@ export default function App() {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (Ctx) audioCtxRef.current = new Ctx();
       }
+      // Idem pour la synthèse vocale : l'amorcer dans le geste pour que les
+      // répliques TTS lancées ensuite par callback ne restent pas muettes.
+      tts.unlock();
       setPlaying(true);
       playAt(index);
     }
@@ -265,7 +268,7 @@ export default function App() {
                 value={characterId}
                 onChange={(e) => setCharacterId(e.target.value)}
               >
-                <option value="">Écoute seule</option>
+                <option value="">Qui êtes-vous ?</option>
                 {manifest.characters.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}

@@ -3,6 +3,7 @@ import PageState from "../shared/PageState.jsx";
 import { fetchScript, setBeforeUnloadGuard, downloadBlob, HttpError } from "../shared/data.js";
 import { scriptReducer, EMPTY_SCRIPT, allLines, newId } from "./reducer.js";
 import PlayHeader from "../shared/PlayHeader.jsx";
+import { DownloadIcon } from "../shared/icons.jsx";
 import CharacterChips from "./CharacterPanel.jsx";
 import SceneEditor from "./SceneEditor.jsx";
 import EditableTitle from "./EditableTitle.jsx";
@@ -161,7 +162,7 @@ export default function App() {
           <>
             {dirty && <span className="dirty-hint">Modifications non téléchargées</span>}
             <button className="btn primary" onClick={download}>
-              ⬇ Télécharger le script
+              <DownloadIcon /> Télécharger le script
             </button>
           </>
         }

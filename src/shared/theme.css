@@ -15,8 +15,6 @@
   --ok-soft: #e6f3e6;
   --warn: #a84f00; /* AA (≥ 4.5:1) sur --warn-soft et sur blanc */
   --warn-soft: #fdeede;
-  --missing: #7a7168;
-  --missing-soft: #efece7;
   --radius: 10px;
   --shadow: 0 2px 8px rgba(43, 36, 32, 0.08);
   --font-ui: "Inter", system-ui, sans-serif;
@@ -166,34 +164,6 @@ textarea:focus {
   outline-offset: 1px;
 }
 
-/* ---- Status badges ---- */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.badge.ok {
-  background: var(--ok-soft);
-  color: var(--ok);
-}
-
-.badge.perime {
-  background: var(--warn-soft);
-  color: var(--warn);
-}
-
-.badge.manquant {
-  background: var(--missing-soft);
-  color: var(--missing);
-}
-
 /* ---- Collapsible play header (shared between Répétition & Enregistrement):
    brand + page label + play title, then the act/scene/character selects. ---- */
 
@@ -268,6 +238,20 @@ textarea:focus {
   min-width: 130px;
 }
 
+/* Personnage sur sa propre ligne (commun Répétition/Enregistrement) ; en
+   Répétition les cases à cocher viennent se ranger juste à côté (.checks-row,
+   local à la page), et passent sous le select quand la largeur manque. */
+.character-row {
+  display: flex;
+  align-items: center;
+  gap: 8px 18px;
+  flex-wrap: wrap;
+}
+
+.character-select {
+  min-width: 160px;
+}
+
 /* ---- Dialogue list + fixed bottom control bar (shared) ---- */
 
 .dialogue-container {
@@ -303,6 +287,7 @@ textarea:focus {
   border-radius: 999px;
   cursor: pointer;
   touch-action: none;
+  position: relative;
 }
 
 .progress-container:focus-visible {
@@ -315,6 +300,20 @@ textarea:focus {
   background: var(--accent);
   border-radius: 999px;
   transition: width 0.15s;
+}
+
+.progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transform: translate(-50%, -50%);
+  transition: left 0.15s;
+  pointer-events: none;
 }
 
 .buttons-row {

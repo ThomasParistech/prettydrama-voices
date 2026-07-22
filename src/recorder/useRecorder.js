@@ -32,9 +32,35 @@ export function extensionForMimeType(mimeType) {
 export default function useRecorder() {
   const [recordingLineId, setRecordingLineId] = useState(null);
   const [error, setError] = useState(null);
+  // Secondes écoulées de la prise en cours (0 hors enregistrement) : alimente
+  // le chrono affiché pour signaler clairement qu'on enregistre.
+  const [elapsed, setElapsed] = useState(0);
+  // AnalyserNode branché sur le micro pendant la prise : sert à dessiner
+  // l'oscilloscope en direct. null hors enregistrement.
+  const [analyser, setAnalyser] = useState(null);
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current != null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setElapsed(0);
+  }, []);
+
+  // Démonte le graphe Web Audio de l'aperçu (l'analyseur ne touche jamais aux
+  // pistes du micro : la capture reste pilotée par le MediaRecorder).
+  const stopAnalyser = useCallback(() => {
+    setAnalyser(null);
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+  }, []);
 
   const release = useCallback(() => {
     if (streamRef.current) {
@@ -43,8 +69,15 @@ export default function useRecorder() {
     }
   }, []);
 
-  // Stop capturing when the page unmounts.
-  useEffect(() => release, [release]);
+  // Stop capturing (and the chrono + aperçu) when the page unmounts.
+  useEffect(
+    () => () => {
+      stopTimer();
+      stopAnalyser();
+      release();
+    },
+    [release, stopTimer, stopAnalyser]
+  );
 
   const supported =
     typeof navigator !== "undefined" &&
@@ -70,6 +103,31 @@ export default function useRecorder() {
       recorderRef.current = recorder;
       recorder.start();
       setRecordingLineId(lineId);
+      // Chrono en direct : recalé sur l'horloge à chaque tick (robuste au
+      // throttling des onglets en arrière-plan).
+      const startedAt = Date.now();
+      setElapsed(0);
+      timerRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+      }, 250);
+      // Aperçu du profil audio : branche un analyseur en dérivation du micro
+      // (jamais connecté à la sortie → aucun larsen). Optionnel : si Web Audio
+      // manque, on enregistre quand même, sans l'aperçu.
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const source = ctx.createMediaStreamSource(streamRef.current);
+          const node = ctx.createAnalyser();
+          node.fftSize = 1024;
+          node.smoothingTimeConstant = 0.8;
+          source.connect(node);
+          audioCtxRef.current = ctx;
+          setAnalyser(node);
+        }
+      } catch {
+        /* aperçu indisponible : sans conséquence sur la capture */
+      }
     } catch (err) {
       setError(
         "Impossible d'accéder au micro. Vérifiez que vous avez autorisé le micro pour ce site."
@@ -80,6 +138,8 @@ export default function useRecorder() {
 
   const stop = useCallback(() => {
     return new Promise((resolve) => {
+      stopTimer();
+      stopAnalyser();
       const recorder = recorderRef.current;
       if (!recorder || recorder.state === "inactive") {
         setRecordingLineId(null);
@@ -94,7 +154,7 @@ export default function useRecorder() {
       };
       recorder.stop();
     });
-  }, []);
+  }, [stopTimer, stopAnalyser]);
 
-  return { supported, recordingLineId, error, start, stop, release };
+  return { supported, recordingLineId, elapsed, analyser, error, start, stop, release };
 }

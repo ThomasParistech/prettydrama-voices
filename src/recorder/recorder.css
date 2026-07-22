@@ -198,10 +198,24 @@
   background: var(--rec-fresh);
 }
 
+/* Carte en cours d'enregistrement : halo accent qui pulse (reste visible en
+   arrière-plan derrière la pop-up). */
 .dialogue-card.own.recording {
   border-color: var(--accent);
   border-left-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+@keyframes rec-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Étiquette de coin « Enregistrement… » sur la carte captée : rouge du thème. */
+.rec-status.live {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* ---- Bottom bar: mic + download + take player ---- */
@@ -237,8 +251,79 @@
   }
 }
 
+/* ---- Bandeau flottant « Enregistrement » (compact, au-dessus des contrôles) ---
+
+   Discret et surtout NON bloquant : pas d'assombrissement, il ne recouvre pas
+   les cartes, l'acteur continue de lire le texte de sa réplique pendant qu'il
+   enregistre. Point clignotant + halo qui respire + mini-oscilloscope + chrono
+   sur une seule ligne. L'arrêt se fait par le bouton micro de la barre. */
+.rec-live-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 10px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  animation: panel-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes panel-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+.rec-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: rec-blink 1s step-start infinite;
+}
+
+.rec-live-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Oscilloscope en direct du micro (tracé accent dessiné au canvas). */
+.rec-wave {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+}
+
+.rec-live-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctrl-btn.mic.stop,
+  .rec-live-panel,
+  .rec-live-dot {
+    animation: none;
+  }
+}
+
 .download-btn {
   white-space: nowrap;
+  /* Cible tactile ≥ 40 px comme les autres boutons de la barre basse. */
+  min-height: 40px;
 }
 
 /* Le libellé « Télécharger » a été retiré partout (icône + nombre + title) :
@@ -258,7 +343,7 @@
 }
 
 .zip-note.warn {
-  color: var(--warn);
+  color: var(--accent);
 }
 
 .zip-note.done {

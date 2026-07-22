@@ -90,7 +90,7 @@ export default React.memo(function SceneEditor({
                       type="button"
                       onClick={() => addLine(actIndex, sceneIndex, scene.lines[i - 1].id)}
                     >
-                      + insérer
+                      <span className="insert-pill">+ insérer</span>
                     </button>
                   </div>
                 )}
@@ -110,7 +110,7 @@ export default React.memo(function SceneEditor({
             {scene.lines.length > 0 && canAddLines && (
               <div className="insert-zone end">
                 <button type="button" onClick={() => addLine(actIndex, sceneIndex, null)}>
-                  + insérer
+                  <span className="insert-pill">+ insérer</span>
                 </button>
               </div>
             )}

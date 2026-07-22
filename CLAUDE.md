@@ -58,6 +58,12 @@ Tout est en français côté utilisateur (UI, messages d'erreur, issues).
   (`process_uploads.py`) en même temps.
 - `sanitize_script` (Python) est le miroir tolérant du `sanitizeScript` de
   l'éditeur : une entrée malformée est ignorée, jamais un crash de workflow.
+  Asymétrie assumée : le JS valide chaque id contre `SAFE_ID` et **reminte** les
+  ids invalides/dupliqués (il est le producteur, doit rester réparable) ; le
+  Python ne vérifie qu'« id = chaîne non vide » (il ne peut pas reminter sans
+  orpheliner les mp3 déjà nommés). C'est sans conséquence : un id hors `SAFE_ID`
+  hand-édité dans `script.json` n'a jamais de clip (l'Action rejette ces ids à
+  l'upload) → statut `manquant`, `clip: null`, aucune URL forgée n'est émise.
 - Uploads hostiles : caps de taille réels (les en-têtes ZIP mentent), noms de
   membres validés par fullmatch, un ZIP cassé ne bloque jamais les autres.
 - Prises d'enregistrement : en mémoire uniquement (garde `beforeunload` tant

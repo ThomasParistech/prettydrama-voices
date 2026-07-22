@@ -34,7 +34,8 @@ export default function App() {
   const [takes, setTakes] = useState({});
   const [downloaded, setDownloaded] = useState(false);
 
-  const { supported, recordingLineId, error: micError, start, stop, release } = useRecorder();
+  const { supported, recordingLineId, elapsed, analyser, error: micError, start, stop, release } =
+    useRecorder();
   const isRecording = recordingLineId != null;
 
   const listRef = useRef(null);
@@ -201,7 +202,10 @@ export default function App() {
               );
             })}
           </select>
+        </div>
+        <div className="character-row">
           <select
+            className="character-select"
             value={characterId}
             disabled={isRecording}
             onChange={(e) => setCharacterId(e.target.value)}
@@ -292,19 +296,26 @@ export default function App() {
                   {line.character}
                   {mine ? ` (${myNumbers.get(line.id)}/${myNumbers.size})` : ""}
                 </span>
-                {state && (
-                  <span className={`rec-status ${state}`}>
-                    {state === "todo" ? (
-                      <span className="st-dot" />
-                    ) : (
-                      <span className={`st-pill ${state}`}>{state === "fresh" ? "↓" : "✓"}</span>
-                    )}
-                    {state === "todo"
-                      ? "À enregistrer"
-                      : state === "fresh"
-                        ? "À télécharger"
-                        : "Déjà enregistrée"}
+                {active && isRecording ? (
+                  <span className="rec-status live">
+                    <span className="rec-live-dot" />
+                    Enregistrement…
                   </span>
+                ) : (
+                  state && (
+                    <span className={`rec-status ${state}`}>
+                      {state === "todo" ? (
+                        <span className="st-dot" />
+                      ) : (
+                        <span className={`st-pill ${state}`}>{state === "fresh" ? "↓" : "✓"}</span>
+                      )}
+                      {state === "todo"
+                        ? "À enregistrer"
+                        : state === "fresh"
+                          ? "À télécharger"
+                          : "Déjà enregistrée"}
+                    </span>
+                  )
                 )}
               </div>
               <p className="dialogue-text">{line.text}</p>
@@ -315,6 +326,16 @@ export default function App() {
       </main>
 
       <div className="controls">
+        {isRecording && (
+          <div className="rec-live-panel" role="status">
+            <span className="rec-live-dot" />
+            <span className="rec-live-label">Enregistrement</span>
+            <LiveWaveform analyser={analyser} />
+            {/* aria-hidden : role="status" annonce « Enregistrement » une fois ;
+                le chrono qui tourne ne doit pas être ré-énoncé chaque seconde. */}
+            <span className="rec-live-time" aria-hidden="true">{formatTime(elapsed)}</span>
+          </div>
+        )}
         <ProgressBar
           value={safeMyIndex}
           count={myLines.length}
@@ -377,6 +398,7 @@ export default function App() {
             <button
               className="btn primary download-btn"
               title="Télécharger le ZIP des prises"
+              aria-label={`Télécharger le ZIP des prises (${takenCount})`}
               disabled={takenCount === 0}
               onClick={downloadZip}
             >
@@ -389,9 +411,97 @@ export default function App() {
   );
 }
 
-// Decorative waveform: deterministic bar heights derived from the line id
-// (no randomness, so re-renders are stable).
-function waveHeights(seed, count = 26) {
+// Live recording waveform: instead of a jittery oscilloscope, it accumulates
+// one amplitude bar at a regular cadence so the signal *builds up* left to
+// right (like a voice-memo), then scrolls once the canvas is full. Reads the
+// recorder's AnalyserNode only — never the stream. Colour = theme accent.
+const BAR_W = 3; // largeur d'une barre (px CSS)
+const BAR_GAP = 2; // espace entre barres (px CSS)
+const SAMPLE_MS = 55; // cadence d'ajout d'une barre → vitesse de « construction »
+
+function LiveWaveform({ analyser }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    // Résolution physique = taille CSS × densité (net sur écrans HiDPI).
+    const cssW = canvas.clientWidth || 240;
+    const cssH = canvas.clientHeight || 26;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    // Repli si --accent ne résout pas (jamais en pratique) : miroir du token
+    // --accent de theme.css, à garder synchrone.
+    const accent =
+      getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#8b2635";
+    const slot = (BAR_W + BAR_GAP) * dpr;
+    const barW = BAR_W * dpr;
+    const capacity = Math.floor(canvas.width / slot);
+
+    // Historique des niveaux (0..1), le plus récent en fin de tableau.
+    const levels = [];
+
+    const drawBars = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      const mid = h / 2;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = accent;
+      // Barres alignées à gauche : ça se remplit progressivement, puis défile.
+      for (let i = 0; i < levels.length; i++) {
+        const bh = Math.max(barW, levels[i] * (h * 0.9));
+        const x = i * slot;
+        // Barre centrée verticalement (miroir), coins arrondis.
+        ctx.beginPath();
+        const r = barW / 2;
+        ctx.roundRect(x, mid - bh / 2, barW, bh, r);
+        ctx.fill();
+      }
+    };
+
+    // Pas d'analyseur (Web Audio absent) : ligne de repos discrète, figée.
+    if (!analyser) {
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(0, canvas.height / 2 - dpr, canvas.width, 2 * dpr);
+      return;
+    }
+
+    const buf = new Uint8Array(analyser.fftSize);
+    let raf;
+    let last = performance.now();
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick);
+      if (now - last < SAMPLE_MS) return;
+      last = now;
+      // Niveau RMS de la fenêtre courante (128 = silence).
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      // Gain + plafond : une voix normale remplit bien la hauteur.
+      levels.push(Math.min(1, rms * 5));
+      if (levels.length > capacity) levels.shift();
+      drawBars();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [analyser]);
+
+  return <canvas ref={canvasRef} className="rec-wave" aria-hidden="true" />;
+}
+
+const WAVE_BARS = 26;
+
+// Fallback waveform: deterministic bar heights derived from the line id (no
+// randomness, so re-renders are stable). Shown only while the real peaks are
+// being decoded, or if decoding fails (e.g. unsupported codec).
+function waveHeights(seed, count = WAVE_BARS) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   const heights = [];
@@ -400,6 +510,45 @@ function waveHeights(seed, count = 26) {
     heights.push(30 + (Math.abs(h) % 65)); // 30%..94%
   }
   return heights;
+}
+
+// Shared AudioContext for decoding: browsers cap the number of live contexts,
+// so one lazily-created instance decodes every clip. Created on first use
+// (needs a user gesture on some browsers, which a recording session always has).
+let sharedAudioCtx = null;
+function getAudioContext() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!sharedAudioCtx) sharedAudioCtx = new Ctx();
+  return sharedAudioCtx;
+}
+
+// Real waveform: fetch the audio at `src`, decode it, and reduce channel 0 to
+// `count` peak amplitudes normalised to the loudest bar. Returns percentages
+// (6%..100%) so silence still shows a sliver. Throws if fetch/decode fails.
+async function decodePeaks(src, count = WAVE_BARS) {
+  const ctx = getAudioContext();
+  if (!ctx) throw new Error("Web Audio indisponible");
+  const buf = await (await fetch(src)).arrayBuffer();
+  // decodeAudioData detaches the buffer; slice() keeps a copy the caller owns.
+  const audio = await ctx.decodeAudioData(buf.slice(0));
+  const data = audio.getChannelData(0);
+  const size = Math.floor(data.length / count) || 1;
+  const peaks = [];
+  let max = 0;
+  for (let i = 0; i < count; i++) {
+    let peak = 0;
+    const start = i * size;
+    const end = Math.min(start + size, data.length);
+    for (let j = start; j < end; j++) {
+      const v = Math.abs(data[j]);
+      if (v > peak) peak = v;
+    }
+    peaks.push(peak);
+    if (peak > max) max = peak;
+  }
+  const floor = 6;
+  return peaks.map((p) => (max > 0 ? floor + (100 - floor) * (p / max) : floor));
 }
 
 function formatTime(seconds) {
@@ -415,9 +564,28 @@ function TakePlayer({ src, seed, fresh }) {
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const bars = useMemo(() => waveHeights(seed), [seed]);
+  const fallback = useMemo(() => waveHeights(seed), [seed]);
+  // Real peaks decoded from the audio; falls back to the decorative bars while
+  // decoding or if decode fails.
+  const [peaks, setPeaks] = useState(null);
+  const bars = peaks ?? fallback;
   // Fraction lue (0..1) : colore l'onde jusqu'à la tête de lecture.
   const progress = duration > 0 ? Math.min(1, time / duration) : 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    setPeaks(null);
+    decodePeaks(src)
+      .then((p) => {
+        if (!cancelled) setPeaks(p);
+      })
+      .catch(() => {
+        // Keep the decorative fallback; not worth surfacing to the actor.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
 
   return (
     <div
