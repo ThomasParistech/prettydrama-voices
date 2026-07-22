@@ -12,7 +12,9 @@ au bon moment.
 ## 📶 État du site
 
 <!-- BUILD_STATUS_START -->
-⏳ **Le site n'a pas encore été construit** — suivez le guide d'installation ci-dessous.
+✅ **Dernier traitement réussi** — tout est en ligne.
+
+_Mis à jour le 22/07/2026 10:24 UTC._
 <!-- BUILD_STATUS_END -->
 
 ---
