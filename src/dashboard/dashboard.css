@@ -5,31 +5,8 @@
 
 .dash-global {
   color: var(--ink-soft);
-  margin: 0 0 8px;
+  margin: 0 0 26px;
   font-weight: 600;
-}
-
-/* Shared track+fill bar (ProgressBar component) */
-.dash-bar {
-  height: 8px;
-  background: var(--paper-dark);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.dash-bar-fill {
-  height: 100%;
-  background: var(--ok);
-  border-radius: 999px;
-}
-
-.dash-bar.dash-global-bar {
-  height: 12px;
-  margin-bottom: 26px;
-}
-
-.dash-bar.dash-card-bar {
-  margin-top: 10px;
 }
 
 .dash-orphans {
@@ -44,65 +21,6 @@
   padding-left: 18px;
 }
 
-.dash-card {
-  margin-bottom: 12px;
-  padding: 14px 16px;
-}
-
-.dash-card-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-}
-
-.dash-character {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--accent);
-  min-width: 110px;
-}
-
-.dash-counts {
-  flex: 1;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.dash-done {
-  font-size: 16px;
-}
-
-.dash-chevron {
-  color: var(--ink-soft);
-  font-size: 11px;
-}
-
-.dash-pending {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dash-pending li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-size: 14px;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
-}
-
 .dash-pending-loc {
   color: var(--ink-soft);
   font-size: 12.5px;
@@ -112,15 +30,86 @@
 .dash-pending-text {
   font-family: var(--font-serif);
   font-size: 15.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
-.dash-all-done {
-  margin: 12px 0 0;
-  color: var(--ok);
+/* Characters × scenes grid. The wrapper scrolls, never the page. */
+.dash-table-wrap {
+  overflow-x: auto;
+}
+
+.dash-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+.dash-table th,
+.dash-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.dash-table .dash-corner {
+  border: none;
+  background: none;
+}
+
+.dash-table .dash-act {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  background: var(--paper-dark);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.dash-table .dash-scene {
+  font-weight: 700;
+  min-width: 34px;
+}
+
+.dash-table .dash-name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  padding-right: 14px;
+}
+
+/* "Still work to do" vs "all recorded" tint, shared by scene and name headers */
+.dash-table th.todo {
+  color: var(--warn);
+}
+
+.dash-table th.done {
+  color: var(--ok);
+}
+
+.dash-table th.empty {
+  color: var(--ink-soft);
+}
+
+.dash-table td.todo {
+  color: var(--warn);
+  background: var(--warn-soft);
+  font-weight: 700;
+}
+
+.dash-table td.done {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.dash-table td.empty {
+  color: var(--ink-soft);
+}
+
+.dash-legend {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 10px;
 }

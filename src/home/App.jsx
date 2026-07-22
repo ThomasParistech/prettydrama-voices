@@ -47,9 +47,6 @@ export default function App() {
       <header className="home-hero">
         <div className="home-brand">🎭 PrettyDrama</div>
         {title && <h1 className="home-play-title">{title}</h1>}
-        <p className="home-tagline">
-          L'outil de répétition de votre troupe — avec vos vraies voix.
-        </p>
       </header>
 
       <main className="home-grid">
@@ -65,7 +62,7 @@ export default function App() {
 
       <footer className="home-footer">
         Un outil libre pour les troupes de théâtre —{" "}
-        <a href="https://github.com/ThomasParistech/prettydrama" target="_blank" rel="noreferrer">
+        <a href="https://github.com/ThomasParistech/prettydrama-voices" target="_blank" rel="noreferrer">
           PrettyDrama
         </a>
       </footer>

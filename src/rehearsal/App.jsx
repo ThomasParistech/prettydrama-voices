@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import PageHeader from "../shared/PageHeader.jsx";
+import PageState from "../shared/PageState.jsx";
+import useScrollToActiveCard from "../shared/useScrollToActiveCard.js";
+import PlayHeader from "../shared/PlayHeader.jsx";
+import ProgressBar from "../shared/ProgressBar.jsx";
+import { myLineNumbers } from "../shared/data.js";
 import useManifest from "../shared/useManifest.js";
 import useTts from "./useTts.js";
 import "./rehearsal.css";
@@ -24,7 +28,6 @@ export default function App() {
   const [hideText, setHideText] = useState(false); // blur MY lines' text
   const [bip, setBip] = useState(true);
   const [avant, setAvant] = useState(true);
-  const [headerOpen, setHeaderOpen] = useState(true);
   const [overlay, setOverlay] = useState(false);
 
   const tts = useTts();
@@ -177,6 +180,10 @@ export default function App() {
     return lines.map((l, i) => (l.characterId === characterId ? i : -1)).filter((i) => i !== -1);
   }, [lines, characterId]);
 
+  // « Nom (n/total) » sur mes cartes — numérotation partagée avec la page
+  // Enregistrement.
+  const myNumbers = useMemo(() => myLineNumbers(lines, characterId), [lines, characterId]);
+
   // "My lines" jump targets — with "Avant" checked, land on the cue line
   // just before each of my lines instead of on the line itself.
   const myTargets = useMemo(() => {
@@ -206,70 +213,29 @@ export default function App() {
     setIndex(0);
   };
 
-  // Auto-scroll the active card to the center.
-  useEffect(() => {
-    const card = listRef.current?.querySelector(".dialogue-card.active");
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [index, actIndex, sceneIndex]);
+  useScrollToActiveCard(listRef, [index, actIndex, sceneIndex]);
 
   useEffect(() => () => clearPending(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- Progress bar (line-indexed) ----
-  const progressRef = useRef(null);
-  const scrub = (clientX) => {
-    const rect = progressRef.current.getBoundingClientRect();
-    const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    goTo(Math.min(Math.floor(fraction * lines.length), lines.length - 1));
-  };
-  const onProgressPointerDown = (e) => {
-    if (lines.length === 0) return;
-    progressRef.current.setPointerCapture(e.pointerId);
-    scrub(e.clientX);
-  };
-  const onProgressPointerMove = (e) => {
-    if (e.buttons > 0 && lines.length > 0) scrub(e.clientX);
-  };
-
   if (loadError) {
-    return (
-      <>
-        <PageHeader title="Répétition" />
-        <div className="empty-state">{loadError}</div>
-      </>
-    );
+    return <PageState title="Répétition" error={loadError} />;
   }
   if (!manifest) {
-    return (
-      <>
-        <PageHeader title="Répétition" />
-        <div className="loading-state">Chargement de la pièce…</div>
-      </>
-    );
+    return <PageState title="Répétition" />;
   }
   if (lines.length === 0 && acts.every((a) => a.scenes.every((s) => s.lines.length === 0))) {
     return (
-      <>
-        <PageHeader title="Répétition" />
-        <div className="empty-state">
-          La pièce est vide pour l'instant. Le responsable doit d'abord la saisir dans l'éditeur.
-        </div>
-      </>
+      <PageState
+        title="Répétition"
+        error="La pièce est vide pour l'instant. Le responsable doit d'abord la saisir dans l'éditeur."
+      />
     );
   }
 
-  let mineCounter = 0;
-
   return (
     <div className="rehearsal-page">
-      <header className={`rehearsal-header ${headerOpen ? "open" : ""}`}>
-        <button className="rehearsal-title" onClick={() => setHeaderOpen((o) => !o)}>
-          <span className="rehearsal-title-text">{manifest.title || "Répétition"}</span>
-          <span className="rehearsal-chevron">{headerOpen ? "▲" : "▼"}</span>
-        </button>
-
-        {headerOpen && (
-          <div className="rehearsal-settings">
-            <div className="selects-row">
+      <PlayHeader label="Répétition" title={manifest.title || "Répétition"}>
+        <div className="selects-row">
               <select value={actIndex} onChange={(e) => changeAct(Number(e.target.value))}>
                 {acts.map((a, i) => (
                   <option key={i} value={i}>
@@ -321,33 +287,38 @@ export default function App() {
                 <input type="checkbox" checked={avant} onChange={(e) => setAvant(e.target.checked)} />
                 Avant <small>(se placer sur la réplique précédente)</small>
               </label>
-            </div>
-          </div>
-        )}
-      </header>
+        </div>
+      </PlayHeader>
 
       <main className="dialogue-container" ref={listRef}>
         {lines.map((line, i) => {
           const mine = isMine(line);
-          if (mine) mineCounter += 1;
-          const n = mineCounter;
           return (
             <div
               key={line.id}
               className={[
                 "dialogue-card",
                 i === index ? "active" : "",
-                mine ? "muted" : "",
+                mine ? "mine muted" : "",
                 mine && hideText ? "hide-text" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
+              role="button"
+              tabIndex={0}
               onClick={() => goTo(i)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goTo(i);
+                }
+              }}
             >
               <div className="dialogue-meta">
                 <span className="dialogue-character">
                   {line.character}
-                  {mine ? ` (${n}/${myLineIndices.length})` : ""}
+                  {mine ? ` (${myNumbers.get(line.id)}/${myNumbers.size})` : ""}
                 </span>
                 {line.status !== "ok" && <span className="tts-hint" title="Pas encore de vraie voix">🤖 voix de synthèse</span>}
               </div>
@@ -358,23 +329,13 @@ export default function App() {
       </main>
 
       {overlay && (
-        <div className="wait-indicator">
+        <div className="wait-indicator" role="status">
           <span>🎭 À vous…</span>
         </div>
       )}
 
       <div className="controls">
-        <div
-          className="progress-container"
-          ref={progressRef}
-          onPointerDown={onProgressPointerDown}
-          onPointerMove={onProgressPointerMove}
-        >
-          <div
-            className="progress-fill"
-            style={{ width: lines.length ? `${((index + 1) / lines.length) * 100}%` : "0%" }}
-          />
-        </div>
+        <ProgressBar value={index} count={lines.length} onSeek={goTo} />
         <div className="buttons-row">
           {characterId !== "" && (
             <button className="ctrl-btn" title="Ma réplique précédente" onClick={goToPrevMy}>

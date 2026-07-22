@@ -32,15 +32,15 @@ SCRIPT = {
     ],
 }
 
-# clips.json stores the RAW text captured at recording time; normalization
-# only happens at comparison time, in build_manifest.
+# clips.json maps line id -> RAW text captured at recording time;
+# normalization only happens at comparison time, in build_manifest.
 CLIPS = {
     # cosmetically different from line 1 -> still ok after normalization
-    "aaaa-1111": {"character": "Serge", "text": "SILENCE ; c'est moi le chef…"},
+    "aaaa-1111": "SILENCE ; c'est moi le chef…",
     # genuinely different words from line 2 -> perime
-    "bbbb-2222": {"character": "Napo", "text": "Je suis souffrant."},
+    "bbbb-2222": "Je suis souffrant.",
     # orphan: id absent from the script -> absent from manifest
-    "zzzz-9999": {"character": "Serge", "text": "Vieille réplique supprimée."},
+    "zzzz-9999": "Vieille réplique supprimée.",
 }
 
 
@@ -149,8 +149,10 @@ class TestMalformedScriptTolerance(unittest.TestCase):
         manifest = build_manifest(script, {})
         self.assertEqual(manifest["lines"][0]["character"], "?")
 
-    def test_non_dict_clip_entry_is_ignored(self):
-        manifest = build_manifest(SCRIPT, {L1: "junk", L2: None})
+    def test_non_string_clip_entry_is_ignored(self):
+        # {"text": ...} is the pre-{id: text} clips.json format: it must
+        # degrade to "manquant", never crash.
+        manifest = build_manifest(SCRIPT, {L1: {"character": "Serge", "text": "junk"}, L2: None})
         statuses = {l["id"]: l["status"] for l in manifest["lines"]}
         self.assertEqual(statuses[L1], "manquant")
         self.assertEqual(statuses[L2], "manquant")

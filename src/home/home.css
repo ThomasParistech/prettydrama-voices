@@ -22,12 +22,6 @@
   margin-bottom: 8px;
 }
 
-.home-tagline {
-  color: var(--ink-soft);
-  font-size: 17px;
-  margin: 0;
-}
-
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -69,7 +63,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--gold);
+  /* Déclinaison sombre de --gold : le doré du thème ne fait que 3.1:1 sur
+     la carte blanche, trop peu pour ce texte de 12 px. */
+  color: #8f6a20;
 }
 
 .home-card-desc {

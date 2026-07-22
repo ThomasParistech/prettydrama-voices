@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useReducer, useState, useCallback } from "react";
-import PageHeader from "../shared/PageHeader.jsx";
+import PageState from "../shared/PageState.jsx";
 import { fetchScript, setBeforeUnloadGuard, downloadBlob, HttpError } from "../shared/data.js";
 import { scriptReducer, EMPTY_SCRIPT, allLines, newId } from "./reducer.js";
-import CharacterPanel from "./CharacterPanel.jsx";
-import ActEditor from "./ActEditor.jsx";
+import PlayHeader from "../shared/PlayHeader.jsx";
+import CharacterChips from "./CharacterPanel.jsx";
+import SceneEditor from "./SceneEditor.jsx";
+import EditableTitle from "./EditableTitle.jsx";
 import "./editor.css";
 
 export default function App() {
@@ -31,7 +33,6 @@ export default function App() {
       .then((raw) => {
         if (cancelled) return;
         rawDispatch({ type: "LOAD_SCRIPT", script: raw });
-        setLoadInfo("Script publié chargé — vous continuez l'édition de la dernière version en ligne.");
       })
       .catch((err) => {
         if (cancelled) return;
@@ -70,7 +71,8 @@ export default function App() {
 
   // Insert a new line and focus it: the UUID is minted here (not in the
   // reducer, which must stay pure) so we know which textarea to focus.
-  // The default character (alternation) is computed by the reducer.
+  // The default character (same speaker as the previous line) is computed
+  // by the reducer.
   const addLine = useCallback(
     (actIndex, sceneIndex, afterLineId) => {
       const id = newId();
@@ -82,6 +84,43 @@ export default function App() {
 
   // Stable identity: LineRow uses it in an effect dependency list.
   const handleFocusHandled = useCallback(() => setFocusLineId(null), []);
+
+  // One scene edited at a time, picked in the banner (same navigation as
+  // the rehearsal page). Indices are clamped so a deletion can never leave
+  // them dangling.
+  const [actIndex, setActIndex] = useState(0);
+  const [sceneIndex, setSceneIndex] = useState(0);
+  const safeActIndex = Math.max(0, Math.min(actIndex, script.acts.length - 1));
+  const act = script.acts[safeActIndex] ?? null;
+  const safeSceneIndex = Math.max(0, Math.min(sceneIndex, (act?.scenes.length ?? 1) - 1));
+  const scene = act?.scenes[safeSceneIndex] ?? null;
+
+  const goToScene = (ai, si) => {
+    setActIndex(ai);
+    setSceneIndex(si);
+  };
+
+  // ADD_ACT / ADD_SCENE append at the end: navigate straight to the new one.
+  const addAct = () => {
+    dispatch({ type: "ADD_ACT" });
+    goToScene(script.acts.length, 0);
+  };
+  const addScene = () => {
+    dispatch({ type: "ADD_SCENE", actIndex: safeActIndex });
+    goToScene(safeActIndex, act.scenes.length);
+  };
+  const deleteAct = () => {
+    const lineCount = act.scenes.reduce((n, s) => n + s.lines.length, 0);
+    if (
+      lineCount === 0 ||
+      window.confirm(
+        `Supprimer « ${act.title} » et ses ${lineCount} réplique(s) ? Cette action est définitive.`
+      )
+    ) {
+      dispatch({ type: "DELETE_ACT", actIndex: safeActIndex });
+      goToScene(Math.max(0, safeActIndex - 1), 0);
+    }
+  };
 
   // One O(lines) pass instead of one full-script scan per character per render.
   const lineCounts = useMemo(() => {
@@ -107,76 +146,111 @@ export default function App() {
   );
 
   if (loading) {
-    return (
-      <>
-        <PageHeader title="Éditeur" />
-        <div className="loading-state">Chargement du script…</div>
-      </>
-    );
+    return <PageState title="Éditeur" loading="Chargement du script…" />;
   }
 
   if (loadError) {
-    return (
-      <>
-        <PageHeader title="Éditeur" />
-        <div className="empty-state load-error">⚠️ {loadError}</div>
-      </>
-    );
+    return <PageState title="Éditeur" error={<>⚠️ {loadError}</>} className="load-error" />;
   }
 
   return (
     <>
-      <PageHeader title="Éditeur — saisie de la pièce">
-        {dirty && <span className="dirty-hint">Modifications non téléchargées</span>}
-        <button className="btn primary" onClick={download}>
-          ⬇ Télécharger le script
-        </button>
-      </PageHeader>
+      <PlayHeader
+        label="Éditeur"
+        title={script.title || "Pièce sans titre"}
+        actions={
+          <>
+            {dirty && <span className="dirty-hint">Modifications non téléchargées</span>}
+            <button className="btn primary" onClick={download}>
+              ⬇ Télécharger le script
+            </button>
+          </>
+        }
+      >
+        <input
+          type="text"
+          className="play-title-input"
+          placeholder="Titre de la pièce"
+          value={script.title}
+          onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
+        />
 
-      <div className="editor-layout">
-        <CharacterPanel
+        <div className="selects-row">
+          <select value={safeActIndex} onChange={(e) => goToScene(Number(e.target.value), 0)}>
+            {script.acts.map((a, i) => (
+              <option key={i} value={i}>
+                {a.title}
+              </option>
+            ))}
+          </select>
+          <select value={safeSceneIndex} onChange={(e) => setSceneIndex(Number(e.target.value))}>
+            {(act?.scenes ?? []).map((s, i) => (
+              <option key={i} value={i}>
+                {s.title} ({s.lines.length} réplique{s.lines.length > 1 ? "s" : ""})
+              </option>
+            ))}
+          </select>
+          <button className="btn small" onClick={addScene}>
+            + Scène
+          </button>
+          <button className="btn small" onClick={addAct}>
+            + Acte
+          </button>
+        </div>
+
+        {/* The character select of the other pages becomes, here, the
+            character MANAGEMENT. */}
+        <CharacterChips
           characters={script.characters}
           lineCounts={lineCounts}
           dispatch={dispatch}
           onRequestDelete={requestDeleteCharacter}
         />
 
-        <main className="editor-main">
-          <p className="load-info">{loadInfo}</p>
+        <p className="editor-header-hint">
+          Quand vous avez terminé : cliquez sur <strong>« Télécharger le script »</strong>, puis
+          déposez le fichier <code>script.json</code> dans le dossier <code>data/</code> de votre
+          dépôt GitHub (il remplacera l'ancien).
+        </p>
+      </PlayHeader>
 
-          <input
-            type="text"
-            className="play-title-input"
-            placeholder="Titre de la pièce"
-            value={script.title}
-            onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
-          />
+      <main className="editor-main">
+        {loadInfo && <p className="load-info">{loadInfo}</p>}
 
-          {script.acts.map((act, actIndex) => (
-            <ActEditor
-              key={actIndex}
-              act={act}
-              actIndex={actIndex}
-              actCount={script.acts.length}
+        <p className="editor-tip">
+          Astuce : dans une réplique, la touche <strong>Entrée</strong> crée la réplique suivante
+          (<strong>Maj + Entrée</strong> pour un retour à la ligne).
+        </p>
+
+        {act && (
+            <div className="act-header">
+              <EditableTitle
+                value={act.title}
+                className="act-title"
+                onChange={(title) => dispatch({ type: "RENAME_ACT", actIndex: safeActIndex, title })}
+              />
+              {script.acts.length > 1 && (
+                <button className="btn icon small" title="Supprimer cet acte" onClick={deleteAct}>
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+
+          {scene && (
+            <SceneEditor
+              scene={scene}
+              actIndex={safeActIndex}
+              sceneIndex={safeSceneIndex}
+              sceneCount={act.scenes.length}
               characters={script.characters}
               dispatch={dispatch}
               addLine={addLine}
               focusLineId={focusLineId}
               onFocusHandled={handleFocusHandled}
             />
-          ))}
-
-          <button className="btn add-act-btn" onClick={() => dispatch({ type: "ADD_ACT" })}>
-            + Ajouter un acte
-          </button>
-
-          <div className="editor-footer-hint">
-            Quand vous avez terminé : cliquez sur <strong>« Télécharger le script »</strong> en haut,
-            puis déposez le fichier <code>script.json</code> dans le dossier <code>data/</code> de
-            votre dépôt GitHub (il remplacera l'ancien).
-          </div>
-        </main>
-      </div>
+          )}
+      </main>
 
       {deleteRequest && (
         <DeleteCharacterModal

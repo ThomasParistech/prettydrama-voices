@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import PageHeader from "../shared/PageHeader.jsx";
-import { linesForCharacter, STATUS_LABELS } from "../shared/data.js";
+import PageState from "../shared/PageState.jsx";
 import useManifest from "../shared/useManifest.js";
 import "./dashboard.css";
 
@@ -9,35 +9,47 @@ import "./dashboard.css";
 export default function App() {
   const { manifest, error: loadError } = useManifest();
   if (loadError) {
-    return (
-      <>
-        <PageHeader title="Avancement" />
-        <div className="empty-state">{loadError}</div>
-      </>
-    );
+    return <PageState title="Avancement" error={loadError} />;
   }
   if (!manifest) {
-    return (
-      <>
-        <PageHeader title="Avancement" />
-        <div className="loading-state">Chargement de la pièce…</div>
-      </>
-    );
+    return <PageState title="Avancement" />;
   }
   return <Dashboard manifest={manifest} />;
 }
 
+// "Scène 3" -> "3" (compact column header); falls back to position.
+function sceneNumber(title, index) {
+  const match = /(\d+)\s*$/.exec(title || "");
+  return match ? match[1] : String(index + 1);
+}
+
+function remainingCount(lines) {
+  return lines.filter((l) => l.status !== "ok").length;
+}
+
 function Dashboard({ manifest }) {
+  // Flat list of scene columns, keeping the act grouping for the header row.
+  const scenes = manifest.acts.flatMap((act, actIndex) =>
+    act.scenes.map((scene, sceneIndex) => ({
+      key: `${actIndex}-${sceneIndex}`,
+      act: act.title,
+      label: sceneNumber(scene.title, sceneIndex),
+      title: scene.title,
+      lines: scene.lines,
+      remaining: remainingCount(scene.lines),
+    }))
+  );
+
   const rows = manifest.characters.map((c) => {
-    const lines = linesForCharacter(manifest, c.id);
-    const count = (status) => lines.filter((l) => l.status === status).length;
+    const cells = scenes.map((scene) => {
+      const lines = scene.lines.filter((l) => l.characterId === c.id);
+      return { total: lines.length, remaining: remainingCount(lines) };
+    });
     return {
       character: c,
-      total: lines.length,
-      ok: count("ok"),
-      perime: count("perime"),
-      manquant: count("manquant"),
-      pending: lines.filter((l) => l.status !== "ok"),
+      cells,
+      total: cells.reduce((sum, cell) => sum + cell.total, 0),
+      remaining: cells.reduce((sum, cell) => sum + cell.remaining, 0),
     };
   });
 
@@ -54,13 +66,12 @@ function Dashboard({ manifest }) {
 
   return (
     <>
-      <PageHeader title="Avancement des enregistrements" />
+      <PageHeader title="Avancement" />
       <div className="container">
         <h1 className="dash-title">{manifest.title || "Pièce sans titre"}</h1>
         <p className="dash-global">
           {totalOk} / {totalLines} répliques enregistrées
         </p>
-        <ProgressBar value={totalOk} max={totalLines} className="dash-global-bar" />
 
         {orphanLines.length > 0 && (
           <div className="dash-orphans card">
@@ -80,66 +91,78 @@ function Dashboard({ manifest }) {
           </div>
         )}
 
-        {rows.length === 0 && (
+        {rows.length === 0 || scenes.length === 0 ? (
           <div className="empty-state">
             Aucun personnage pour l'instant — la pièce doit d'abord être saisie dans l'éditeur.
           </div>
+        ) : (
+          <ProgressTable acts={manifest.acts} scenes={scenes} rows={rows} />
         )}
 
-        {rows.map((row) => (
-          <CharacterProgress key={row.character.id} row={row} />
-        ))}
+        <p className="dash-legend">
+          Chaque cellule indique le nombre de répliques restant à enregistrer
+          (✓ = tout est enregistré, · = pas de réplique dans la scène).
+        </p>
       </div>
     </>
   );
 }
 
-// Single track+fill bar used everywhere in the dashboard.
-function ProgressBar({ value, max, className }) {
+// Characters × scenes grid: remaining lines to record in each cell, scene
+// columns grouped by act, names tinted "done" / "still work to do".
+function ProgressTable({ acts, scenes, rows }) {
   return (
-    <div className={`dash-bar ${className || ""}`}>
-      <div className="dash-bar-fill" style={{ width: max ? `${(value / max) * 100}%` : "0%" }} />
-    </div>
-  );
-}
-
-function CharacterProgress({ row }) {
-  const [open, setOpen] = useState(false);
-  const done = row.total > 0 && row.ok === row.total;
-
-  return (
-    <div className="dash-card card">
-      <button className="dash-card-header" onClick={() => setOpen((o) => !o)}>
-        <span className="dash-character">{row.character.name}</span>
-        <span className="dash-counts">
-          <span className="badge ok">{row.ok} {STATUS_LABELS.ok}</span>
-          {row.perime > 0 && <span className="badge perime">{row.perime} {STATUS_LABELS.perime}</span>}
-          {row.manquant > 0 && (
-            <span className="badge manquant">{row.manquant} {STATUS_LABELS.manquant}</span>
-          )}
-          {done && <span className="dash-done">🎉</span>}
-        </span>
-        <span className="dash-chevron">{open ? "▲" : "▼"}</span>
-      </button>
-
-      <ProgressBar value={row.ok} max={row.total} className="dash-card-bar" />
-
-      {open && row.pending.length > 0 && (
-        <ul className="dash-pending">
-          {row.pending.map((l) => (
-            <li key={l.id}>
-              <span className={`badge ${l.status}`}>{STATUS_LABELS[l.status]}</span>
-              <span className="dash-pending-loc">
-                {l.act} · {l.scene}
-              </span>
-              <span className="dash-pending-text">{l.text}</span>
-            </li>
+    <div className="dash-table-wrap">
+      <table className="dash-table">
+        <thead>
+          <tr>
+            <th className="dash-corner" />
+            {acts.map(
+              (act, i) =>
+                act.scenes.length > 0 && (
+                  <th key={i} className="dash-act" colSpan={act.scenes.length}>
+                    {act.title}
+                  </th>
+                )
+            )}
+          </tr>
+          <tr>
+            <th className="dash-corner" />
+            {scenes.map((scene) => (
+              <th
+                key={scene.key}
+                title={`${scene.act} · ${scene.title}`}
+                className={`dash-scene ${scene.remaining > 0 ? "todo" : "done"}`}
+              >
+                {scene.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.character.id}>
+              <th
+                className={`dash-name ${
+                  row.total === 0 ? "empty" : row.remaining > 0 ? "todo" : "done"
+                }`}
+              >
+                {row.character.name}
+              </th>
+              {row.cells.map((cell, i) => (
+                <td
+                  key={scenes[i].key}
+                  className={
+                    cell.total === 0 ? "empty" : cell.remaining > 0 ? "todo" : "done"
+                  }
+                >
+                  {cell.total === 0 ? "·" : cell.remaining > 0 ? cell.remaining : "✓"}
+                </td>
+              ))}
+            </tr>
           ))}
-        </ul>
-      )}
-      {open && row.pending.length === 0 && (
-        <p className="dash-all-done">Toutes les répliques sont enregistrées. 👏</p>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 }

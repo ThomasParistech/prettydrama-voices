@@ -1,13 +1,7 @@
-// Data loading + status vocabulary shared by all pages.
+// Data loading shared by all pages.
 //
 // Pages read ONLY data/manifest.json (+ mp3 clips) — except the editor, which
 // also reads data/script.json (the source of truth it produces).
-
-export const STATUS_LABELS = {
-  ok: "✓ Enregistré",
-  perime: "À refaire",
-  manquant: "À enregistrer",
-};
 
 // Distinguishes "file does not exist" (404 → legitimate empty start) from
 // "file exists but is unreadable" (parse error → must NOT be treated as
@@ -41,9 +35,17 @@ export const MANIFEST_ERROR_MESSAGE =
   "Impossible de charger la pièce. Le site n'est peut-être pas encore publié — " +
   "réessayez dans quelques minutes ou contactez votre responsable.";
 
-// All the lines of one character (characterId is a UUID string).
-export function linesForCharacter(manifest, characterId) {
-  return manifest.lines.filter((l) => l.characterId === characterId);
+// Numérotation « (n/total) » de mes répliques dans la scène courante,
+// partagée par les pages Répétition et Enregistrement : Map lineId -> n
+// (1-based) ; `size` donne le total.
+export function myLineNumbers(lines, characterId) {
+  const numbers = new Map();
+  if (characterId === "") return numbers;
+  let n = 0;
+  for (const line of lines) {
+    if (line.characterId === characterId) numbers.set(line.id, ++n);
+  }
+  return numbers;
 }
 
 // Warn before closing the tab when there is unsaved in-memory work.

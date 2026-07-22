@@ -73,13 +73,13 @@ def sanitize_script(raw: dict) -> dict:
 
 
 def compute_status(line: dict, clips: dict) -> str:
-    clip = clips.get(line["id"])
-    if not isinstance(clip, dict):
+    recorded_text = clips.get(line["id"])
+    if not isinstance(recorded_text, str):
         return "manquant"
     # Both sides are RAW text (current script vs text at recording time);
     # normalization happens here and only here — single implementation, no
     # cross-language mismatch possible.
-    if normalize_text(line["text"]) == normalize_text(clip.get("text") or ""):
+    if normalize_text(line["text"]) == normalize_text(recorded_text):
         return "ok"
     return "perime"
 

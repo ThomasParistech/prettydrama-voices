@@ -1,10 +1,64 @@
-.editor-layout {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  max-width: 1200px;
+/* Éditeur — direction « Rail » : fond crème partagé, neutres chauds, la couleur
+   du personnage n'est plus qu'un accent (poignée de drag + select).
+   Répliques en lignes fines séparées d'un filet 1px, sans carte ni ombre.
+   Typo : Spectral (texte des répliques), IBM Plex Sans (UI),
+   IBM Plex Mono (badges/chiffres). */
+
+:root {
+  /* Re-skin of the shared tokens, scoped to this page (this file is only
+     loaded by editor.html). */
+  --paper: #faf6ef;
+  --paper-dark: #f1eadd;
+  --card: #ffffff;
+  --ink: #2b2b28;
+  --ink-soft: #6f6f66; /* gris « Rail » assombri : ≥ 4.5:1 sur le crème */
+  --ed-ghost: #8f8f88; /* poignée de drag des lignes sans personnage (≥ 3:1 sur blanc) */
+  --accent: #7a5cc0;
+  --accent-soft: #f2eefb;
+  --border: #e8e1d3;
+  --shadow: none;
+  /* Seule ombre conservée du thème partagé : le panneau des répliques. */
+  --ed-panel-shadow: 0 2px 8px rgba(43, 36, 32, 0.08);
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-serif: "Spectral", Georgia, serif;
+
+  --ed-title: #26261f;
+  --ed-rule: #ece5d6;
+  --ed-sidebar: #f5f0e5;
+  --ed-danger: #c0603f;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  outline: 2px solid rgba(122, 92, 192, 0.35);
+}
+
+/* Même bouton « Télécharger » que la page Enregistrement : accent chaud du
+   thème partagé (que le :root local re-skinne en violet), hover compris —
+   la règle hover du thème (var(--accent-dark)) s'applique telle quelle. */
+.btn.primary {
+  background: #8b2635;
+  border-color: #8b2635;
+}
+
+/* Le re-skin « Rail » couvre aussi le bouton destructif (modal de
+   suppression de personnage) : sans quoi il hérite du violet accent. */
+.btn.danger {
+  color: var(--ed-danger);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ed-title);
+}
+
+.editor-main {
+  max-width: 860px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px 20px 20px;
 }
 
 .dirty-hint {
@@ -29,62 +83,98 @@
   margin: 0 0 14px;
 }
 
-/* ---- Character panel ---- */
+/* ---- Character chips (in the play header, where the other pages have
+   their character select) ---- */
 
-.character-panel {
-  width: 260px;
-  flex-shrink: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  position: sticky;
-  top: 76px;
-}
-
-.character-panel h2 {
-  font-size: 22px;
-  margin-bottom: 4px;
-}
-
-.panel-hint {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  margin: 0 0 12px;
-}
-
-.character-list {
-  list-style: none;
-  margin: 0 0 14px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.character-row {
+.characters-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.character-dot {
-  width: 12px;
-  height: 12px;
+.character-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ed-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 6px 3px 8px;
+  position: relative;
+}
+
+.chip-delete {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1;
+  padding: 3px 4px;
+  cursor: pointer;
+}
+
+.chip-delete:hover {
+  color: var(--ed-danger);
+}
+
+.character-swatch {
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
+  border: none;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.character-swatch:hover {
+  box-shadow: 0 0 0 3px rgba(43, 43, 40, 0.12);
+}
+
+.swatch-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+}
+
+.swatch-popover {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px;
+  box-shadow: 0 8px 24px rgba(43, 43, 40, 0.12);
+}
+
+.swatch-popover .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.swatch-popover .swatch:hover {
+  transform: scale(1.15);
+}
+
+.swatch-popover .swatch.current {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink);
 }
 
 .character-name {
-  flex: 1;
-  text-align: left;
   background: none;
   border: none;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--ink);
-  padding: 4px 2px;
+  padding: 2px;
   border-radius: 6px;
 }
 
@@ -93,13 +183,14 @@
 }
 
 .character-rename-input {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 6px;
+  width: 130px;
+  padding: 2px 6px;
+  font-size: 13.5px;
 }
 
 .character-count {
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
   color: var(--ink-soft);
   background: var(--paper-dark);
   border-radius: 999px;
@@ -117,47 +208,45 @@
 }
 
 .character-add input {
-  flex: 1;
-  min-width: 0;
+  width: 170px;
+  padding: 4px 8px;
+  font-size: 13.5px;
 }
 
 /* ---- Main column ---- */
 
-.editor-main {
-  flex: 1;
-  min-width: 0;
-}
-
 .play-title-input {
   width: 100%;
   font-family: var(--font-serif);
-  font-size: 30px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ed-title);
   border: none;
   background: transparent;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
-  padding: 6px 2px;
-  margin-bottom: 20px;
+  padding: 2px;
 }
 
-.act-block {
-  margin-bottom: 28px;
+.editor-tip {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 2px 14px;
 }
 
 .act-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .act-title.title-display,
 .act-title.title-input {
   font-family: var(--font-serif);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--accent);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ed-title);
   background: none;
   border: none;
   padding: 2px 6px;
@@ -165,7 +254,7 @@
 }
 
 .act-title.title-display:hover {
-  background: var(--accent-soft);
+  background: var(--paper-dark);
   border-radius: 6px;
 }
 
@@ -174,7 +263,7 @@
 }
 
 .scene-block {
-  padding: 14px;
+  padding: 0;
   margin-bottom: 14px;
 }
 
@@ -182,19 +271,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .scene-title.title-display,
 .scene-title.title-input {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
   background: none;
   border: none;
   padding: 2px 6px;
   text-align: left;
-  color: var(--ink);
+  color: var(--ed-title);
 }
 
 .scene-title.title-display:hover {
@@ -203,7 +292,8 @@
 }
 
 .scene-line-count {
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--ink-soft);
   flex: 1;
 }
@@ -214,31 +304,40 @@
   margin: 4px 0 10px;
 }
 
-/* ---- Line rows ---- */
+/* ---- Line rows (« Rail ») ----
+   One white panel per scene (same white-on-cream contrast as the dialogue
+   cards of the other pages), thin rows inside separated by a 1px rule. The
+   character's color only paints the ⠿ handle and the select (inline
+   styles). */
 
 .line-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--ed-panel-shadow);
+  overflow: hidden;
 }
 
 .line-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ed-rule);
+}
+
+.line-list .line-row:last-child {
+  border-bottom: none;
 }
 
 .drag-handle {
   border: none;
   background: none;
-  color: var(--ink-soft);
-  font-size: 16px;
-  padding: 6px 2px;
+  font-size: 15px;
+  /* Vertically aligned with the character name line. */
+  padding: 7px 2px;
   cursor: grab;
   touch-action: none;
 }
@@ -247,17 +346,18 @@
   cursor: grabbing;
 }
 
-.line-color {
-  width: 4px;
-  align-self: stretch;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
 .line-character {
-  width: 140px;
+  /* Intrinsic width: a select sizes itself to its LONGEST option, so every
+     row's dropdown arrow aligns on the longest character name — no dead
+     margin after short names. */
+  width: auto;
+  max-width: 220px;
   flex-shrink: 0;
-  padding: 6px 6px;
+  padding: 5px 0;
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .line-text {
@@ -267,8 +367,10 @@
   overflow: hidden;
   font-family: var(--font-serif);
   font-size: 17px;
-  line-height: 1.4;
-  padding: 7px 10px;
+  line-height: 1.5;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
 }
 
 .line-delete {
@@ -279,20 +381,69 @@
 }
 
 .line-delete:hover {
-  color: var(--accent);
+  color: var(--ed-danger);
 }
 
-.add-line-btn,
-.add-scene-btn {
-  margin-top: 2px;
+/* Hover-revealed insert point between two lines. Zero footprint: the band
+   spans the whole row width and overlaps the neighbouring rows (negative
+   margins), the pill floats over the 1px rule. */
+.insert-zone {
+  position: relative;
+  height: 18px;
+  margin: -9px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
 }
 
-.add-scene-btn {
-  margin-bottom: 6px;
+/* At the very end of the scene the panel's overflow would clip the lower
+   half of the band: keep it fully inside instead. */
+.insert-zone.end {
+  margin-bottom: 0;
 }
 
-.add-act-btn {
-  margin-bottom: 24px;
+.insert-zone button {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.insert-zone:hover button,
+.insert-zone button:focus-visible {
+  opacity: 1;
+}
+
+.insert-zone button:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.add-first-line-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+
+.add-first-line-btn:hover {
+  background: var(--ed-sidebar);
+  color: var(--ink);
 }
 
 .reassign-row {
@@ -303,17 +454,15 @@
   font-size: 14.5px;
 }
 
-.editor-footer-hint {
-  background: var(--accent-soft);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  font-size: 14px;
-  color: var(--ink);
-  margin-bottom: 40px;
+.editor-header-hint {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0;
 }
 
-.editor-footer-hint code {
-  background: #fff;
+.editor-header-hint code {
+  font-family: var(--font-mono);
+  background: var(--paper-dark);
   border-radius: 4px;
   padding: 1px 5px;
 }
@@ -321,15 +470,6 @@
 /* ---- Mobile ---- */
 
 @media (max-width: 800px) {
-  .editor-layout {
-    flex-direction: column;
-  }
-
-  .character-panel {
-    width: 100%;
-    position: static;
-  }
-
   .line-row {
     flex-wrap: wrap;
   }

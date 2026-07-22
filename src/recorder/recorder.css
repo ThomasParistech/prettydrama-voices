@@ -1,164 +1,264 @@
-.pick-title {
-  font-size: 34px;
-  margin-bottom: 4px;
+/* Enregistrement — même structure que la Répétition (bandeau, cartes,
+   barre basse : styles partagés dans shared/theme.css). Ici : surbrillance
+   des répliques à faire, bouton micro, prise audio sous les contrôles. */
+
+:root {
+  /* Palette d'état des prises (choix orange/vert assumé, propre à cette
+     page). Les tons foncés tiennent le contraste AA (≥ 4.5:1) sur la carte
+     rose --accent-soft ET sous glyphe blanc ; les clairs ne servent qu'au
+     décor (point, halo, onde). */
+  --rec-todo: #9a5a15;
+  --rec-todo-dot: #d08a3e;
+  --rec-done: #4c6e5b;
+  --rec-done-wave: #b9ccc0;
+  --rec-fresh: #1e7440;
+  --rec-fresh-halo: #bfe3cd;
+  --rec-fresh-wave: #8fcaa4;
 }
 
-.pick-subtitle {
-  color: var(--ink-soft);
-  margin: 0 0 20px;
-}
-
-.character-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.character-card {
-  padding: 20px;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: transform 0.1s, box-shadow 0.1s;
-}
-
-.character-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(43, 36, 32, 0.15);
-}
-
-.character-card-name {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.character-card-info {
+.recorder-hint {
   font-size: 13.5px;
   color: var(--ink-soft);
-}
-
-.recorder-container {
-  padding-bottom: 120px;
-}
-
-.recorder-intro {
-  padding: 14px 18px;
-  margin-bottom: 20px;
-  font-size: 14.5px;
-}
-
-.recorder-intro p {
   margin: 0;
 }
 
 .mic-error {
   color: var(--accent);
   font-weight: 600;
-  margin-top: 8px !important;
+  margin: 0;
 }
 
-.group-title {
-  font-size: 22px;
-  margin: 24px 0 10px;
-  color: var(--accent);
+/* ---- Dialogue card states ---- */
+
+/* Palette « mes répliques » (.mine) et bordure active : dans theme.css ; le
+   statut de prise est porté par l'étiquette de coin (.rec-status). Seules mes
+   répliques sont sélectionnables. */
+.dialogue-card.own {
+  cursor: pointer;
 }
 
-.line-card {
-  padding: 14px 16px;
-  margin-bottom: 10px;
+/* Fresh take, not yet in a downloaded ZIP: soft green halo. */
+.dialogue-card.own.fresh {
+  border-color: var(--rec-fresh-halo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rec-fresh) 10%, transparent);
 }
 
-.line-card.recording {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 38, 53, 0.25);
+/* ---- Corner status label (where the rehearsal page shows its TTS hint) ---- */
+
+.rec-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.line-card-top {
-  margin-bottom: 6px;
+.rec-status.todo {
+  color: var(--rec-todo);
 }
 
-.line-card-text {
-  font-family: var(--font-serif);
-  font-size: 19px;
-  line-height: 1.45;
-  margin: 0 0 12px;
-  white-space: pre-wrap;
+.rec-status.done {
+  color: var(--rec-done);
 }
 
-.line-card-actions {
+.rec-status.fresh {
+  color: var(--rec-fresh);
+}
+
+.st-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rec-todo-dot);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.st-pill {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
+  display: inline-block;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.st-pill.done {
+  background: var(--rec-done);
+}
+
+.st-pill.fresh {
+  background: var(--rec-fresh);
+}
+
+.status-legend {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 0 2px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.status-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- In-card audio player (recorded lines only) ---- */
+
+.card-player {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  padding-top: 8px;
 }
 
-.record-btn {
-  min-width: 150px;
-  justify-content: center;
-}
-
-.record-btn.stop {
-  background: var(--accent);
-  border-color: var(--accent);
+.player-play {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
   color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Zone tactile ≥ 42px sans grossir le bouton visuellement. */
+.player-play::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+/* Optical centering of the ▶ glyph inside the circle. */
+.play-glyph {
+  padding-left: 2px;
+}
+
+.card-player.done .player-play {
+  background: var(--rec-done);
+}
+
+.card-player.fresh .player-play {
+  background: var(--rec-fresh);
+}
+
+.player-time {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  flex: 1;
+  max-width: 220px;
+}
+
+.player-wave span {
+  width: 2px;
+  border-radius: 1px;
+}
+
+.card-player.done .player-wave span {
+  background: var(--rec-done-wave);
+}
+
+.card-player.fresh .player-wave span {
+  background: var(--rec-fresh-wave);
+}
+
+.dialogue-card.own.recording {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ---- Bottom bar: mic + download + take player ---- */
+
+.controls-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.controls-side.right {
+  justify-content: flex-end;
+}
+
+.line-counter {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.ctrl-btn.mic.stop {
   animation: pulse 1.2s infinite;
 }
 
 @keyframes pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(139, 38, 53, 0.35);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(139, 38, 53, 0);
+    box-shadow: 0 0 0 8px transparent;
   }
 }
 
-.take-audio {
-  height: 40px;
-  max-width: 100%;
-  flex: 1;
-  min-width: 200px;
+.download-btn {
+  white-space: nowrap;
 }
 
-/* Sticky export bar */
-.zip-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
-  z-index: 100;
+.mic-svg {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
-.zip-warning {
+/* Save-state note, in the top header (kept out of the bottom bar). */
+.zip-note {
   font-size: 13px;
   font-weight: 600;
+  margin: 0;
+}
+
+.zip-note.warn {
   color: var(--warn);
 }
 
-.zip-done {
-  font-size: 13px;
-  font-weight: 600;
+.zip-note.done {
   color: var(--ok);
 }
 
-.zip-btn {
-  font-size: 16px;
-}
-
 @media (max-width: 600px) {
-  .zip-bar {
-    justify-content: center;
+  .controls-side:not(.right) {
+    display: none; /* keep mic centered, download visible */
+  }
+
+  /* « ⬇ Télécharger (N) » ne tient pas à 375px avec les 3 boutons ronds :
+     on ne garde que « ⬇ (N) », le title du bouton porte le libellé complet. */
+  .download-label {
+    display: none;
   }
 }

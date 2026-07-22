@@ -26,6 +26,25 @@ export const EMPTY_SCRIPT = {
   acts: [{ title: "Acte I", scenes: [{ title: "Scène 1", lines: [] }] }],
 };
 
+// The 12 character hues of the "Rail" design — rendered in oklch with
+// homogeneous lightness. A character's hue is STORED on the character
+// (script.json), picked automatically at creation and changeable via the
+// swatch popover. This spectral order is the POPOVER display order.
+export const CHARACTER_HUES = [255, 220, 190, 160, 130, 95, 60, 35, 20, 350, 320, 285];
+
+// Auto-assignment order: greedy max-distance interleaving of the same 12
+// hues, so the first characters get hues far apart on the wheel (assigning
+// in spectral order gave near-identical neighbours).
+const HUE_ASSIGN_ORDER = [255, 60, 160, 350, 95, 220, 20, 190, 320, 130, 285, 35];
+
+function firstFreeHue(characters) {
+  const used = new Set(characters.map((c) => c.hue));
+  return (
+    HUE_ASSIGN_ORDER.find((h) => !used.has(h)) ??
+    HUE_ASSIGN_ORDER[characters.length % HUE_ASSIGN_ORDER.length]
+  );
+}
+
 const isId = (value) => typeof value === "string" && SAFE_ID.test(value);
 
 // Defensive normalization of a loaded script.json (the published file can be
@@ -40,6 +59,7 @@ export function sanitizeScript(raw) {
   // follow them.
   const characterRemap = new Map();
 
+  const usedHues = new Set();
   const characters = (Array.isArray(raw.characters) ? raw.characters : [])
     .filter((c) => c && typeof c === "object" && typeof c.name === "string" && c.name.trim())
     .map((c) => {
@@ -50,7 +70,13 @@ export function sanitizeScript(raw) {
         id = fresh;
       }
       seenIds.add(id);
-      return { id, name: c.name };
+      // Heal a missing/foreign hue with the first free one (deterministic).
+      let hue = CHARACTER_HUES.includes(c.hue)
+        ? c.hue
+        : HUE_ASSIGN_ORDER.find((h) => !usedHues.has(h)) ??
+          HUE_ASSIGN_ORDER[usedHues.size % HUE_ASSIGN_ORDER.length];
+      usedHues.add(hue);
+      return { id, name: c.name, hue };
     });
   const characterIds = new Set(characters.map((c) => c.id));
 
@@ -98,22 +124,11 @@ export function countLinesOfCharacter(script, characterId) {
   return allLines(script).filter((l) => l.characterId === characterId).length;
 }
 
-// Default character for a line inserted after index `idx` in `scene`:
-// ALTERNATION — a dialogue between A and B can be typed with Enter only.
-// Insert after a line of B whose previous line is from A -> default A.
-// Fallbacks: the previous line's character, then the first character.
+// Character of a line inserted after index `idx` in `scene`: the SAME
+// character as the line it follows (Enter continues the current speaker);
+// falls back to the play's first character.
 function defaultCharacterId(scene, idx, characters) {
-  const prev = scene.lines[idx];
-  const beforePrev = scene.lines[idx - 1];
-  if (
-    prev?.characterId != null &&
-    beforePrev?.characterId != null &&
-    beforePrev.characterId !== prev.characterId
-  ) {
-    return beforePrev.characterId;
-  }
-  if (prev?.characterId != null) return prev.characterId;
-  return characters[0]?.id ?? null;
+  return scene.lines[idx]?.characterId ?? characters[0]?.id ?? null;
 }
 
 // Immutably update one scene designated by indices. Only that scene's
@@ -158,14 +173,20 @@ export function scriptReducer(state, action) {
     // ---- Characters (side panel referential) ----
 
     case "ADD_CHARACTER": {
-      // action.id: UUID minted by the caller.
+      // action.id: UUID minted by the caller. Hue: first free (pure, from state).
       const name = action.name.trim();
       if (!name) return state;
       return {
         ...state,
-        characters: [...state.characters, { id: action.id, name }],
+        characters: [...state.characters, { id: action.id, name, hue: firstFreeHue(state.characters) }],
       };
     }
+
+    case "SET_CHARACTER_HUE":
+      return {
+        ...state,
+        characters: state.characters.map((c) => (c.id === action.id ? { ...c, hue: action.hue } : c)),
+      };
 
     case "RENAME_CHARACTER": {
       const name = action.name.trim();
@@ -244,8 +265,8 @@ export function scriptReducer(state, action) {
     case "ADD_LINE": {
       // Insert after line `afterLineId` (or append when null).
       // action.id: UUID minted by the caller (which also uses it to focus
-      // the new line's textarea). The default character (alternation) is
-      // computed here — pure, from state + action only.
+      // the new line's textarea). The default character (same speaker as
+      // the previous line) is computed here — pure, from state + action only.
       return updateScene(state, action.actIndex, action.sceneIndex, (scene) => {
         const idx =
           action.afterLineId == null

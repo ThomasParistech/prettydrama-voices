@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { characterHue } from "./CharacterPanel.jsx";
+import { characterColorById } from "./CharacterPanel.jsx";
 
 // One dialogue line: drag handle + character <select> + text + delete.
 // Enter inside the textarea inserts a new line right after (like typing in a
@@ -42,35 +42,32 @@ export default React.memo(function LineRow({
     }
   }, [autoFocus, onFocusHandled]);
 
+  // "Rail" design: white background everywhere, the character's color is
+  // only an accent — it paints the drag handle and the character select.
+  const color = characterColorById(characters, line.characterId);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const known = characters.some((c) => c.id === line.characterId);
+  const known = color != null;
 
   return (
     <div ref={setNodeRef} style={style} className="line-row">
       <button
         className="drag-handle"
         title="Glisser pour déplacer"
+        style={{ color: color ?? "var(--ed-ghost)" }}
         {...attributes}
         {...listeners}
       >
         ⠿
       </button>
 
-      <span
-        className="line-color"
-        style={{
-          background:
-            line.characterId != null ? `hsl(${characterHue(line.characterId)}, 55%, 55%)` : "#ccc",
-        }}
-      />
-
       <select
         className="line-character"
+        style={{ color: color ?? "var(--ink-soft)" }}
         value={known ? line.characterId : ""}
         onChange={(e) =>
           dispatch({
@@ -111,7 +108,18 @@ export default React.memo(function LineRow({
       <button
         className="btn icon small line-delete"
         title="Supprimer cette réplique"
-        onClick={() => dispatch({ type: "DELETE_LINE", actIndex, sceneIndex, lineId: line.id })}
+        onClick={() => {
+          const excerpt = line.text.trim();
+          if (
+            excerpt === "" ||
+            window.confirm(
+              `Supprimer la réplique « ${excerpt.length > 80 ? `${excerpt.slice(0, 80)}…` : excerpt} » ? ` +
+                "Cette action est définitive."
+            )
+          ) {
+            dispatch({ type: "DELETE_LINE", actIndex, sceneIndex, lineId: line.id });
+          }
+        }}
       >
         ✕
       </button>

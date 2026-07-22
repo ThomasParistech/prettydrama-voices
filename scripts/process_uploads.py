@@ -1,13 +1,15 @@
 """Process actor voice ZIPs dropped in uploads/voix/.
 
 For each ZIP:
- - read its manifest.json ({character, clips: [{id, file, text}]}) — `text`
-   is the RAW line text at recording time; normalization happens ONLY here
-   in the Action (single implementation), never in the browser
+ - read its manifest.json (bare {line id: raw text} mapping) — the text is
+   the RAW line text at recording time; normalization happens ONLY here
+   in the Action (single implementation), never in the browser. The audio
+   member is named {id}.{ext} (extension chosen by the recording browser),
+   so it is located from the id alone.
  - VALIDATE the whole manifest first, then transcode every clip with ffmpeg
    in a single pass (leading/trailing silence trim + loudness normalization +
    mp3 mono ~64 kbps) into a temp dir, and only if EVERY clip succeeded,
-   publish clips/{id}.mp3 and update data/clips.json (key = line id).
+   publish clips/{id}.mp3 and update data/clips.json ({line id: raw text}).
    A ZIP is merged entirely or not at all — never half.
  - delete the processed ZIP (idempotent merge: re-sending a clip for the same
    line id simply overwrites it)
@@ -101,7 +103,9 @@ def transcode(source: Path, dest: Path) -> None:
         )
 
 
-def parse_manifest(archive) -> tuple[str, list]:
+def parse_manifest(archive) -> list[tuple[str, str, str]]:
+    """Validate the {line id: raw text} manifest and return
+    (line_id, audio_member_name, raw_text) triples."""
     names = set(archive.namelist())
     if "manifest.json" not in names:
         raise ZipError(
@@ -115,24 +119,25 @@ def parse_manifest(archive) -> tuple[str, list]:
 
     if not isinstance(manifest, dict):
         raise ZipError("le manifest.json du ZIP n'a pas le format attendu")
-    character = manifest.get("character")
-    clips = manifest.get("clips")
-    if not isinstance(character, str) or not character.strip() or not isinstance(clips, list):
-        raise ZipError("le manifest.json du ZIP n'a pas le format attendu")
-    if len(clips) > MAX_CLIPS_PER_ZIP:
-        raise ZipError(f"le ZIP contient trop de clips ({len(clips)})")
+    if len(manifest) > MAX_CLIPS_PER_ZIP:
+        raise ZipError(f"le ZIP contient trop de clips ({len(manifest)})")
 
     # Validate EVERY entry before touching anything.
-    for clip in clips:
-        if not isinstance(clip, dict):
-            raise ZipError(f"une entrée du manifest est invalide : {str(clip)[:200]}")
-        line_id = clip.get("id")
-        file_name = clip.get("file")
-        if not isinstance(line_id, str) or not LINE_ID_PATTERN.match(line_id):
-            raise ZipError(f"une entrée du manifest a un identifiant invalide : {str(clip)[:200]}")
-        if not isinstance(file_name, str) or "/" in file_name or "\\" in file_name or file_name not in names:
-            raise ZipError(f"le fichier audio « {str(file_name)[:100]} » est introuvable dans le ZIP")
-    return character, clips
+    audio_names = names - {"manifest.json"}
+    entries = []
+    for line_id, text in manifest.items():
+        if not LINE_ID_PATTERN.match(line_id) or not isinstance(text, str):
+            raise ZipError(f"une entrée du manifest est invalide : {str({line_id: text})[:200]}")
+        # The audio member is {id}.{ext} — the extension depends on the
+        # recording browser, so locate it by id (ids cannot contain dots,
+        # and the fullmatch keeps the member name free of path tricks).
+        matches = [n for n in audio_names if re.fullmatch(re.escape(line_id) + r"\.[0-9a-zA-Z]+", n)]
+        if len(matches) != 1:
+            raise ZipError(
+                f"le fichier audio de la réplique « {line_id} » est introuvable (ou en double) dans le ZIP"
+            )
+        entries.append((line_id, matches[0], text))
+    return entries
 
 
 def process_zip(zip_path: Path, clips_index: dict) -> int:
@@ -146,28 +151,23 @@ def process_zip(zip_path: Path, clips_index: dict) -> int:
 
     with archive, tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        character, clips = parse_manifest(archive)
+        entries = parse_manifest(archive)
 
         # Phase 1: extract + transcode everything into the temp dir.
         transcoded = []  # (line_id, tmp_mp3_path, raw_text)
-        for clip in clips:
-            line_id, file_name = clip["id"], clip["file"]
+        for line_id, file_name, text in entries:
             raw = tmp_dir / f"in-{file_name}"
             raw.write_bytes(read_member_capped(archive, file_name, MAX_CLIP_BYTES))
             out = tmp_dir / f"{line_id}.mp3"
             transcode(raw, out)
-            text = clip.get("text")
-            transcoded.append((line_id, out, text if isinstance(text, str) else ""))
+            transcoded.append((line_id, out, text))
 
         # Phase 2: everything succeeded — publish atomically-ish.
         for line_id, out, text in transcoded:
             shutil.move(str(out), str(CLIPS_DIR / f"{line_id}.mp3"))
-            clips_index[line_id] = {
-                "character": character,
-                # Raw text at recording time; compared after normalization
-                # by build_manifest.py.
-                "text": text,
-            }
+            # Raw text at recording time; compared after normalization
+            # by build_manifest.py.
+            clips_index[line_id] = text
         return len(transcoded)
 
 

@@ -43,7 +43,7 @@ export default React.memo(function SceneEditor({
   const canAddLines = characters.length > 0;
 
   return (
-    <div className="scene-block card">
+    <div className="scene-block">
       <div className="scene-header">
         <EditableTitle
           value={scene.title}
@@ -81,39 +81,56 @@ export default React.memo(function SceneEditor({
       >
         <SortableContext items={scene.lines.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           <div className="line-list">
-            {scene.lines.map((line) => (
-              <LineRow
-                key={line.id}
-                line={line}
-                characters={characters}
-                actIndex={actIndex}
-                sceneIndex={sceneIndex}
-                autoFocus={focusLineId === line.id}
-                onFocusHandled={onFocusHandled}
-                dispatch={dispatch}
-                addLine={addLine}
-              />
+            {scene.lines.map((line, i) => (
+              <React.Fragment key={line.id}>
+                {/* Discreet hover-revealed insert point between two lines. */}
+                {i > 0 && (
+                  <div className="insert-zone">
+                    <button
+                      type="button"
+                      onClick={() => addLine(actIndex, sceneIndex, scene.lines[i - 1].id)}
+                    >
+                      + insérer
+                    </button>
+                  </div>
+                )}
+                <LineRow
+                  line={line}
+                  characters={characters}
+                  actIndex={actIndex}
+                  sceneIndex={sceneIndex}
+                  autoFocus={focusLineId === line.id}
+                  onFocusHandled={onFocusHandled}
+                  dispatch={dispatch}
+                  addLine={addLine}
+                />
+              </React.Fragment>
             ))}
+            {/* Same insert point after the LAST line (appends to the scene). */}
+            {scene.lines.length > 0 && canAddLines && (
+              <div className="insert-zone end">
+                <button type="button" onClick={() => addLine(actIndex, sceneIndex, null)}>
+                  + insérer
+                </button>
+              </div>
+            )}
           </div>
         </SortableContext>
       </DndContext>
 
+      {/* No "+ Réplique" button: once a first line exists, Enter inside a
+          line creates the next one (faster). Empty scenes still need a way
+          to create that first line. */}
       {scene.lines.length === 0 && canAddLines && (
-        <p className="scene-empty-hint">Aucune réplique — cliquez ci-dessous pour commencer.</p>
+        <button className="add-first-line-btn" onClick={() => addLine(actIndex, sceneIndex, null)}>
+          Écrire la première réplique — les suivantes se créent avec la touche Entrée.
+        </button>
       )}
       {!canAddLines && (
         <p className="scene-empty-hint">
-          Ajoutez d'abord un personnage dans le panneau de gauche pour pouvoir saisir des répliques.
+          Ajoutez d'abord un personnage dans le bandeau ci-dessus pour pouvoir saisir des répliques.
         </p>
       )}
-
-      <button
-        className="btn small add-line-btn"
-        disabled={!canAddLines}
-        onClick={() => addLine(actIndex, sceneIndex, null)}
-      >
-        + Réplique
-      </button>
     </div>
   );
 });

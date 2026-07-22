@@ -1,19 +1,23 @@
 import React, { useState } from "react";
-import { newId } from "./reducer.js";
+import { newId, CHARACTER_HUES } from "./reducer.js";
 
-// Hue derived from the stable character id (a UUID string) — consistent
-// visual identity across the whole editor without any stored color.
-export function characterHue(id) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  }
-  return ((hash % 360) + 360) % 360;
+// "Rail" palette: desaturated, homogeneous lightness — the hue is stored on
+// the character (see CHARACTER_HUES in reducer.js).
+export function hueColor(hue) {
+  return `oklch(0.58 0.14 ${hue})`;
 }
 
-// Side panel: the character referential. Lines only ever reference these
-// entries by id, so renames propagate everywhere and never touch line ids.
-export default function CharacterPanel({ characters, lineCounts, dispatch, onRequestDelete }) {
+// CSS color of a character, or null when the id is unknown.
+export function characterColorById(characters, id) {
+  const character = characters.find((c) => c.id === id);
+  return character ? hueColor(character.hue) : null;
+}
+
+// Character management, inline in the play header: one chip per character
+// (color swatch + inline rename + line count + delete) and an add form.
+// Lines only ever reference these entries by id, so renames propagate
+// everywhere and never touch line ids.
+export default function CharacterChips({ characters, lineCounts, dispatch, onRequestDelete }) {
   const [newName, setNewName] = useState("");
 
   const add = () => {
@@ -24,26 +28,20 @@ export default function CharacterPanel({ characters, lineCounts, dispatch, onReq
   };
 
   return (
-    <aside className="character-panel">
-      <h2>Personnages</h2>
-      <p className="panel-hint">
-        Ajoutez ici les personnages de la pièce, puis choisissez-les dans chaque réplique.
-      </p>
-
-      <ul className="character-list">
-        {characters.map((c) => (
-          <CharacterRow
-            key={c.id}
-            character={c}
-            lineCount={lineCounts.get(c.id) ?? 0}
-            onRename={(name) => dispatch({ type: "RENAME_CHARACTER", id: c.id, name })}
-            onDelete={() => onRequestDelete(c)}
-          />
-        ))}
-        {characters.length === 0 && (
-          <li className="character-empty">Aucun personnage pour l'instant.</li>
-        )}
-      </ul>
+    <div className="characters-row">
+      {characters.map((c) => (
+        <CharacterChip
+          key={c.id}
+          character={c}
+          lineCount={lineCounts.get(c.id) ?? 0}
+          onRename={(name) => dispatch({ type: "RENAME_CHARACTER", id: c.id, name })}
+          onSetHue={(hue) => dispatch({ type: "SET_CHARACTER_HUE", id: c.id, hue })}
+          onDelete={() => onRequestDelete(c)}
+        />
+      ))}
+      {characters.length === 0 && (
+        <span className="character-empty">Aucun personnage pour l'instant :</span>
+      )}
 
       <form
         className="character-add"
@@ -62,13 +60,14 @@ export default function CharacterPanel({ characters, lineCounts, dispatch, onReq
           + Ajouter
         </button>
       </form>
-    </aside>
+    </div>
   );
 }
 
-function CharacterRow({ character, lineCount, onRename, onDelete }) {
+function CharacterChip({ character, lineCount, onRename, onSetHue, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(character.name);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const commit = () => {
     setEditing(false);
@@ -77,8 +76,34 @@ function CharacterRow({ character, lineCount, onRename, onDelete }) {
   };
 
   return (
-    <li className="character-row">
-      <span className="character-dot" style={{ background: `hsl(${characterHue(character.id)}, 55%, 55%)` }} />
+    <span className="character-chip">
+      <button
+        className="character-swatch"
+        title="Changer la couleur"
+        style={{ background: hueColor(character.hue) }}
+        onClick={() => setPickerOpen((o) => !o)}
+      />
+      {pickerOpen && (
+        <>
+          <div className="swatch-backdrop" onClick={() => setPickerOpen(false)} />
+          <div className="swatch-popover">
+            {CHARACTER_HUES.map((h) => (
+              <button
+                key={h}
+                className={`swatch ${h === character.hue ? "current" : ""}`}
+                aria-label={h === character.hue ? "Couleur actuelle" : "Choisir cette couleur"}
+                title={h === character.hue ? "Couleur actuelle" : "Choisir cette couleur"}
+                style={{ background: hueColor(h) }}
+                onClick={() => {
+                  onSetHue(h);
+                  setPickerOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
       {editing ? (
         <input
           type="text"
@@ -101,9 +126,9 @@ function CharacterRow({ character, lineCount, onRename, onDelete }) {
         </button>
       )}
       <span className="character-count">{lineCount}</span>
-      <button className="btn icon small" title="Supprimer ce personnage" onClick={onDelete}>
+      <button className="chip-delete" title="Supprimer ce personnage" onClick={onDelete}>
         ✕
       </button>
-    </li>
+    </span>
   );
 }

@@ -1,76 +1,85 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import JSZip from "jszip";
-import PageHeader from "../shared/PageHeader.jsx";
-import {
-  setBeforeUnloadGuard,
-  downloadBlob,
-  slugify,
-  linesForCharacter,
-  STATUS_LABELS,
-} from "../shared/data.js";
+import PageState from "../shared/PageState.jsx";
+import useScrollToActiveCard from "../shared/useScrollToActiveCard.js";
+import PlayHeader from "../shared/PlayHeader.jsx";
+import ProgressBar from "../shared/ProgressBar.jsx";
+import { setBeforeUnloadGuard, downloadBlob, slugify, myLineNumbers } from "../shared/data.js";
 import useManifest from "../shared/useManifest.js";
 import useRecorder, { extensionForMimeType } from "./useRecorder.js";
 import "./recorder.css";
 
+// Recording page, structured like the rehearsal page: same header (act /
+// scene / character selects), same dialogue cards, same fixed bottom bar.
+// The play button becomes a mic button that records the SELECTED line (one
+// of MY lines only). Takes are kept across character switches, so one
+// session can record several characters and export them in a single ZIP.
+//
+// Each of my lines is in one of three states (label in the card corner):
+//  - "todo"  À enregistrer   : no take and no up-to-date published clip;
+//  - "fresh" À télécharger   : take made THIS session — and it STAYS so
+//                              after the ZIP download: "Déjà enregistrée"
+//                              only becomes true once the respo has merged
+//                              the ZIP and the site was republished;
+//  - "done"  Déjà enregistrée: up-to-date published clip (manifest only).
 export default function App() {
   const { manifest, error: loadError } = useManifest();
-  const [characterId, setCharacterId] = useState(null);
+
+  const [actIndex, setActIndex] = useState(0);
+  const [sceneIndex, setSceneIndex] = useState(0);
+  const [characterId, setCharacterId] = useState(""); // "" = not chosen yet
+  const [myIndex, setMyIndex] = useState(0);
   // In-memory takes of this one-shot session: lineId -> {blob, ext, text, url}
   const [takes, setTakes] = useState({});
   const [downloaded, setDownloaded] = useState(false);
 
   const { supported, recordingLineId, error: micError, start, stop, release } = useRecorder();
+  const isRecording = recordingLineId != null;
 
-  // Guard: takes only live in memory. Warn before closing if any take has
-  // not been exported yet.
+  const listRef = useRef(null);
+
+  const acts = manifest?.acts ?? [];
+  const scene = acts[actIndex]?.scenes?.[sceneIndex] ?? null;
+  const lines = useMemo(() => scene?.lines ?? [], [scene]);
+  const myLines = useMemo(
+    () => (characterId === "" ? [] : lines.filter((l) => l.characterId === characterId)),
+    [lines, characterId]
+  );
+  // « Nom (n/total) » sur mes cartes — numérotation partagée avec la page
+  // Répétition.
+  const myNumbers = useMemo(() => myLineNumbers(lines, characterId), [lines, characterId]);
+
+  const lineState = useCallback(
+    (line) => {
+      if (takes[line.id]) return "fresh";
+      return line.status === "ok" ? "done" : "todo";
+    },
+    [takes]
+  );
+  const isTodo = useCallback((line) => lineState(line) === "todo", [lineState]);
+
+  const safeMyIndex = Math.max(0, Math.min(myIndex, myLines.length - 1));
+  const currentLine = myLines[safeMyIndex] ?? null;
+
+  // Entering a scene/character: land on the first line still to record.
+  // (Deliberately NOT re-run when takes change: finishing a take must not
+  // yank the position away.)
+  useEffect(() => {
+    const first = myLines.findIndex(isTodo);
+    setMyIndex(first === -1 ? 0 : first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actIndex, sceneIndex, characterId]);
+
+  useScrollToActiveCard(listRef, [safeMyIndex, actIndex, sceneIndex, characterId]);
+
+  // Guard: takes only live in memory. Warn before closing while any take
+  // has not been included in a downloaded ZIP yet.
   const takenCount = Object.keys(takes).length;
   const hasUnexported = takenCount > 0 && !downloaded;
   useEffect(() => {
     setBeforeUnloadGuard(hasUnexported);
     return () => setBeforeUnloadGuard(false);
   }, [hasUnexported]);
-
-  const character = useMemo(
-    () => manifest?.characters.find((c) => c.id === characterId) ?? null,
-    [manifest, characterId]
-  );
-
-  // The character's lines, grouped by act/scene using the manifest's own
-  // hierarchy (no re-derivation from the flat list).
-  const groups = useMemo(() => {
-    if (!manifest || characterId == null) return [];
-    const result = [];
-    for (const act of manifest.acts) {
-      for (const scene of act.scenes) {
-        const lines = scene.lines.filter((l) => l.characterId === characterId);
-        if (lines.length > 0) result.push({ key: `${act.title} — ${scene.title}`, lines });
-      }
-    }
-    return result;
-  }, [manifest, characterId]);
-
-  const clearTakes = useCallback(() => {
-    setTakes((prev) => {
-      Object.values(prev).forEach((take) => take.url && URL.revokeObjectURL(take.url));
-      return {};
-    });
-    setDownloaded(false);
-  }, []);
-
-  // Takes belong to ONE character: switching characters with unexported
-  // takes would export them under the wrong name — confirm, then clear.
-  const changeCharacter = () => {
-    if (
-      hasUnexported &&
-      !window.confirm(
-        "Vos enregistrements n'ont pas été téléchargés et seront perdus si vous changez de personnage. Continuer ?"
-      )
-    ) {
-      return;
-    }
-    clearTakes();
-    setCharacterId(null);
-  };
 
   const saveTake = (line, blob, mimeType) => {
     if (!blob || blob.size === 0) return;
@@ -93,28 +102,40 @@ export default function App() {
     setDownloaded(false);
   };
 
-  const deleteTake = (lineId) => {
-    setTakes((prev) => {
-      if (prev[lineId]?.url) URL.revokeObjectURL(prev[lineId].url);
-      const next = { ...prev };
-      delete next[lineId];
-      return next;
-    });
+  const toggleRecord = async () => {
+    if (!currentLine) return;
+    if (isRecording) {
+      const result = await stop();
+      if (result) saveTake(currentLine, result.blob, result.mimeType);
+    } else {
+      try {
+        await start(currentLine.id);
+      } catch {
+        /* mic denied: error is displayed in the header */
+      }
+    }
   };
 
   const downloadZip = async () => {
     const zip = new JSZip();
-    const clips = Object.entries(takes).map(([lineId, take]) => {
-      const file = `${lineId}.${take.ext}`;
-      zip.file(file, take.blob);
-      return { id: lineId, file, text: take.text };
-    });
-    zip.file(
-      "manifest.json",
-      JSON.stringify({ character: character.name, clips }, null, 2)
-    );
+    // manifest.json is a bare {lineId: raw text} mapping — the audio member
+    // is always named {lineId}.{ext}, so the Action finds it from the id.
+    const clips = {};
+    for (const [lineId, take] of Object.entries(takes)) {
+      zip.file(`${lineId}.${take.ext}`, take.blob);
+      clips[lineId] = take.text;
+    }
+    zip.file("manifest.json", JSON.stringify(clips, null, 2));
     const blob = await zip.generateAsync({ type: "blob" });
-    downloadBlob(blob, `voix-${slugify(character.name)}.zip`);
+    // One session may record several characters: name the file after all of
+    // them (readability only, the pipeline works from line ids).
+    const characterOfLine = new Map(manifest.lines.map((l) => [l.id, l.characterId]));
+    const recordedIds = new Set(Object.keys(takes).map((id) => characterOfLine.get(id)));
+    const names = manifest.characters.filter((c) => recordedIds.has(c.id)).map((c) => slugify(c.name));
+    downloadBlob(blob, `voix-${names.join("-") || "prises"}.zip`);
+    // Line statuses do NOT change: a take stays "À télécharger" until the
+    // respo has merged the ZIP and the site was republished — only the
+    // save-state note reacts here.
     setDownloaded(true);
     // Recording session is over: turn the mic-in-use indicator off.
     // (Recording again simply reopens the stream.)
@@ -122,165 +143,330 @@ export default function App() {
   };
 
   if (loadError) {
-    return (
-      <>
-        <PageHeader title="Enregistrement" />
-        <div className="empty-state">{loadError}</div>
-      </>
-    );
+    return <PageState title="Enregistrement" error={loadError} />;
   }
 
   if (!manifest) {
-    return (
-      <>
-        <PageHeader title="Enregistrement" />
-        <div className="loading-state">Chargement de la pièce…</div>
-      </>
-    );
+    return <PageState title="Enregistrement" />;
   }
 
   if (!supported) {
     return (
-      <>
-        <PageHeader title="Enregistrement" />
-        <div className="empty-state">
-          Votre navigateur ne permet pas d'enregistrer du son. Essayez avec une version récente de
-          Chrome, Firefox ou Safari.
-        </div>
-      </>
+      <PageState
+        title="Enregistrement"
+        error="Votre navigateur ne permet pas d'enregistrer du son. Essayez avec une version récente de Chrome, Firefox ou Safari."
+      />
     );
   }
 
-  // ---- Step 1: pick your character ----
-  if (!character) {
-    return (
-      <>
-        <PageHeader title="Enregistrement — vos répliques" />
-        <div className="container">
-          <h1 className="pick-title">{manifest.title}</h1>
-          <p className="pick-subtitle">Qui êtes-vous ? Choisissez votre personnage :</p>
-          <div className="character-grid">
-            {manifest.characters.map((c) => {
-              const lines = linesForCharacter(manifest, c.id);
-              const todo = lines.filter((l) => l.status !== "ok").length;
+  // Sélectionne une de MES répliques (jamais en cours d'enregistrement).
+  const selectLine = (line) => {
+    if (!isRecording) setMyIndex(myLines.findIndex((l) => l.id === line.id));
+  };
+
+  return (
+    <div className="recorder-page">
+      <PlayHeader label="Enregistrement" title={manifest.title || "Enregistrement"}>
+        <div className="selects-row">
+          <select
+            value={actIndex}
+            disabled={isRecording}
+            onChange={(e) => {
+              setActIndex(Number(e.target.value));
+              setSceneIndex(0);
+            }}
+          >
+            {acts.map((a, i) => (
+              <option key={i} value={i}>
+                {a.title}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sceneIndex}
+            disabled={isRecording}
+            onChange={(e) => setSceneIndex(Number(e.target.value))}
+          >
+            {(acts[actIndex]?.scenes ?? []).map((s, i) => {
+              const remaining =
+                characterId === ""
+                  ? null
+                  : s.lines.filter((l) => l.characterId === characterId && isTodo(l)).length;
               return (
-                <button key={c.id} className="character-card card" onClick={() => setCharacterId(c.id)}>
-                  <span className="character-card-name">{c.name}</span>
-                  <span className="character-card-info">
-                    {lines.length} réplique{lines.length > 1 ? "s" : ""}
-                    {todo > 0 ? ` — ${todo} à faire` : " — tout est enregistré 🎉"}
-                  </span>
-                </button>
+                <option key={i} value={i}>
+                  {s.title}
+                  {remaining != null ? ` (${remaining} à enregistrer)` : ""}
+                </option>
               );
             })}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // ---- Step 2: record your lines ----
-  return (
-    <>
-      <PageHeader title={`Enregistrement — ${character.name}`}>
-        <button className="btn small" onClick={changeCharacter}>
-          Changer de personnage
-        </button>
-      </PageHeader>
-
-      <div className="container recorder-container">
-        <div className="recorder-intro card">
-          <p>
-            <strong>{character.name}</strong>, voici vos répliques. Appuyez sur 🎙️ pour enregistrer,
-            réécoutez, recommencez si besoin. Quand vous avez fini (même partiellement), téléchargez
-            votre fichier et envoyez-le à votre responsable (mail, WhatsApp… peu importe).
-          </p>
-          {micError && <p className="mic-error">{micError}</p>}
-        </div>
-
-        {groups.length === 0 && <div className="empty-state">Ce personnage n'a aucune réplique.</div>}
-        {groups.map((g) => (
-          <section key={g.key}>
-            <h2 className="group-title">{g.key}</h2>
-            {g.lines.map((line) => (
-              <LineCard
-                key={line.id}
-                line={line}
-                take={takes[line.id]}
-                isRecording={recordingLineId === line.id}
-                anotherRecording={recordingLineId != null && recordingLineId !== line.id}
-                onRecord={async () => {
-                  if (recordingLineId === line.id) {
-                    const result = await stop();
-                    if (result) saveTake(line, result.blob, result.mimeType);
-                  } else {
-                    if (recordingLineId != null) await stop(); // safety: stop a stray take
-                    try {
-                      await start(line.id);
-                    } catch {
-                      /* mic denied: error is displayed above */
-                    }
-                  }
-                }}
-                onDeleteTake={() => deleteTake(line.id)}
-              />
+          </select>
+          <select
+            value={characterId}
+            disabled={isRecording}
+            onChange={(e) => setCharacterId(e.target.value)}
+          >
+            <option value="">Qui êtes-vous ?</option>
+            {manifest.characters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
-          </section>
-        ))}
+          </select>
+        </div>
+        <p className="recorder-hint">
+          Placez-vous sur une de vos répliques, puis appuyez sur le micro en bas : il démarre
+          aussitôt. Une réplique déjà faite peut être réécoutée et refaite. Vous pouvez changer de
+          personnage pour enregistrer plusieurs voix dans le même fichier, à envoyer ensuite à
+          votre responsable.
+        </p>
+        {micError && <p className="mic-error">{micError}</p>}
+        {hasUnexported && (
+          <p className="zip-note warn">
+            ⚠️ Vos enregistrements ne sont PAS sauvegardés tant que vous n'avez pas téléchargé le
+            fichier.
+          </p>
+        )}
+        {downloaded && takenCount > 0 && (
+          <p className="zip-note done">✓ Fichier téléchargé. Envoyez-le à votre responsable.</p>
+        )}
+      </PlayHeader>
 
-        <div className="zip-bar">
-          {hasUnexported && (
-            <span className="zip-warning">
-              ⚠️ Vos enregistrements ne sont PAS sauvegardés tant que vous n'avez pas téléchargé le
-              fichier.
+      <main className="dialogue-container" ref={listRef}>
+        {characterId === "" && (
+          <div className="empty-state">Choisissez votre personnage dans le bandeau ci-dessus.</div>
+        )}
+        {characterId !== "" && myLines.length === 0 && (
+          <div className="empty-state">Vous n'avez aucune réplique dans cette scène.</div>
+        )}
+        {characterId !== "" && myLines.length > 0 && (
+          <div className="status-legend">
+            <span>
+              <span className="st-dot" /> À enregistrer
             </span>
-          )}
-          {downloaded && takenCount > 0 && (
-            <span className="zip-done">✓ Fichier téléchargé — envoyez-le à votre responsable.</span>
-          )}
-          <button className="btn primary zip-btn" disabled={takenCount === 0} onClick={downloadZip}>
-            ⬇ Télécharger mon fichier ({takenCount} enregistrement{takenCount > 1 ? "s" : ""})
+            <span>
+              <span className="st-pill done">✓</span> Déjà enregistrée
+            </span>
+            <span>
+              <span className="st-pill fresh">↓</span> À télécharger
+            </span>
+          </div>
+        )}
+        {lines.map((line) => {
+          const mine = characterId !== "" && line.characterId === characterId;
+          const active = mine && currentLine?.id === line.id;
+          const state = mine ? lineState(line) : null;
+          const take = takes[line.id];
+          const playerSrc = !mine || state === "todo" ? null : (take?.url ?? line.clip);
+          return (
+            <div
+              key={line.id}
+              className={[
+                "dialogue-card",
+                mine ? "mine own" : "",
+                state === "fresh" ? "fresh" : "",
+                active ? "active" : "",
+                active && isRecording ? "recording" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              role={mine ? "button" : undefined}
+              tabIndex={mine ? 0 : undefined}
+              onClick={mine ? () => selectLine(line) : undefined}
+              onKeyDown={
+                mine
+                  ? (e) => {
+                      // Seulement la carte elle-même : ne pas voler
+                      // Entrée/Espace au bouton play du lecteur intégré.
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        selectLine(line);
+                      }
+                    }
+                  : undefined
+              }
+            >
+              <div className="dialogue-meta">
+                <span className="dialogue-character">
+                  {line.character}
+                  {mine ? ` (${myNumbers.get(line.id)}/${myNumbers.size})` : ""}
+                </span>
+                {state && (
+                  <span className={`rec-status ${state}`}>
+                    {state === "todo" ? (
+                      <span className="st-dot" />
+                    ) : (
+                      <span className={`st-pill ${state}`}>{state === "fresh" ? "↓" : "✓"}</span>
+                    )}
+                    {state === "todo"
+                      ? "À enregistrer"
+                      : state === "fresh"
+                        ? "À télécharger"
+                        : "Déjà enregistrée"}
+                  </span>
+                )}
+              </div>
+              <p className="dialogue-text">{line.text}</p>
+              {playerSrc && <TakePlayer src={playerSrc} seed={line.id} fresh={state === "fresh"} />}
+            </div>
+          );
+        })}
+      </main>
+
+      <div className="controls">
+        <ProgressBar
+          value={safeMyIndex}
+          count={myLines.length}
+          disabled={isRecording}
+          onSeek={setMyIndex}
+        />
+        <div className="buttons-row">
+          <span className="controls-side">
+            {myLines.length > 0 && (
+              <span className="line-counter">
+                {safeMyIndex + 1}/{myLines.length}
+              </span>
+            )}
+          </span>
+          <button
+            className="ctrl-btn"
+            title="Ma réplique précédente"
+            disabled={isRecording || safeMyIndex <= 0}
+            onClick={() => setMyIndex(safeMyIndex - 1)}
+          >
+            ◀
           </button>
+          <button
+            className={`ctrl-btn play mic ${isRecording ? "stop" : ""}`}
+            title={
+              isRecording
+                ? "Terminer l'enregistrement"
+                : "Enregistrer cette réplique (le micro démarre aussitôt)"
+            }
+            disabled={!currentLine}
+            onClick={toggleRecord}
+          >
+            {isRecording ? (
+              "⏹"
+            ) : (
+              <svg
+                className="mic-svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="9" y="2" width="6" height="11" rx="3" />
+                <path d="M5 10a7 7 0 0 0 14 0" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+            )}
+          </button>
+          <button
+            className="ctrl-btn"
+            title="Ma réplique suivante"
+            disabled={isRecording || safeMyIndex >= myLines.length - 1}
+            onClick={() => setMyIndex(safeMyIndex + 1)}
+          >
+            ▶
+          </button>
+          <span className="controls-side right">
+            <button
+              className="btn primary download-btn"
+              title="Télécharger le ZIP des prises"
+              disabled={takenCount === 0}
+              onClick={downloadZip}
+            >
+              ⬇ <span className="download-label">Télécharger </span>({takenCount})
+            </button>
+          </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function LineCard({ line, take, isRecording, anotherRecording, onRecord, onDeleteTake }) {
+// Decorative waveform: deterministic bar heights derived from the line id
+// (no randomness, so re-renders are stable).
+function waveHeights(seed, count = 26) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  const heights = [];
+  for (let i = 0; i < count; i++) {
+    h = (h * 1103515245 + 12345) | 0;
+    heights.push(30 + (Math.abs(h) % 65)); // 30%..94%
+  }
+  return heights;
+}
+
+function formatTime(seconds) {
+  const s = Math.floor(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// In-card audio player: round play button + elapsed/total + waveform.
+// `fresh` switches the vivid-green palette ("À télécharger") vs the greyed
+// green of already-recorded lines.
+function TakePlayer({ src, seed, fresh }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const bars = useMemo(() => waveHeights(seed), [seed]);
+
   return (
-    <div className={`line-card card ${isRecording ? "recording" : ""}`}>
-      <div className="line-card-top">
-        {take ? (
-          <span className="badge ok">🎙️ Enregistré — à envoyer</span>
-        ) : (
-          <span className={`badge ${line.status}`}>
-            {STATUS_LABELS[line.status]}
-            {line.status === "perime" ? " (le texte a changé)" : ""}
-          </span>
-        )}
-      </div>
-
-      <p className="line-card-text">{line.text}</p>
-
-      <div className="line-card-actions">
-        <button
-          className={`btn record-btn ${isRecording ? "stop" : ""}`}
-          disabled={anotherRecording}
-          onClick={onRecord}
-        >
-          {isRecording ? "⏹ Terminer" : take ? "🎙️ Refaire" : "🎙️ Enregistrer"}
-        </button>
-
-        {take && !isRecording && (
-          <>
-            <audio src={take.url} controls preload="metadata" className="take-audio" />
-            <button className="btn icon" title="Supprimer cette prise" onClick={onDeleteTake}>
-              ✕
-            </button>
-          </>
-        )}
-      </div>
+    <div
+      className={`card-player ${fresh ? "fresh" : "done"}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        className="player-play"
+        title={playing ? "Pause" : "Écouter"}
+        onClick={() => {
+          const audio = audioRef.current;
+          if (audio.paused) audio.play();
+          else audio.pause();
+        }}
+      >
+        {playing ? "❚❚" : <span className="play-glyph">▶</span>}
+      </button>
+      <span className="player-time">
+        {formatTime(time)} / {formatTime(duration)}
+      </span>
+      <span className="player-wave">
+        {bars.map((h, i) => (
+          <span key={i} style={{ height: `${h}%` }} />
+        ))}
+      </span>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setTime(0)}
+        // Take replaced (src swapped): reset the stale elapsed time and the
+        // play state — no pause event is guaranteed on a source change.
+        onEmptied={() => {
+          setPlaying(false);
+          setTime(0);
+        }}
+        onTimeUpdate={(e) => setTime(e.target.currentTime)}
+        onLoadedMetadata={(e) => {
+          // Chrome quirk: MediaRecorder blobs report an Infinity duration
+          // until seeked past the end — force it, then rewind.
+          if (!Number.isFinite(e.target.duration)) e.target.currentTime = 1e7;
+        }}
+        onDurationChange={(e) => {
+          const d = e.target.duration;
+          if (Number.isFinite(d)) {
+            setDuration(d);
+            if (e.target.currentTime > d) e.target.currentTime = 0;
+          }
+        }}
+      />
     </div>
   );
 }

@@ -7,12 +7,13 @@
   --ink: #2b2420;
   --ink-soft: #6b5f56;
   --accent: #8b2635;
+  --accent-dark: #6f1e2a; /* hover des boutons pleins accent */
   --accent-soft: #f6e8ea;
   --gold: #b98a2f;
   --border: #e3dbcd;
   --ok: #2e7d32;
   --ok-soft: #e6f3e6;
-  --warn: #c95e00;
+  --warn: #a84f00; /* AA (≥ 4.5:1) sur --warn-soft et sur blanc */
   --warn-soft: #fdeede;
   --missing: #7a7168;
   --missing-soft: #efece7;
@@ -20,6 +21,11 @@
   --shadow: 0 2px 8px rgba(43, 36, 32, 0.08);
   --font-ui: "Inter", system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", Georgia, serif;
+  /* Bandeau partagé (PlayHeader/PageHeader) : ces tokens ne doivent JAMAIS
+     être re-skinnés par une page — la marque et le titre rendent
+     identiquement sur toutes les pages, re-skin « Rail » compris. */
+  --header-accent: #8b2635;
+  --header-serif: "Cormorant Garamond", Georgia, serif;
 }
 
 * {
@@ -78,10 +84,10 @@ select {
 }
 
 .page-header .brand {
-  font-family: var(--font-serif);
+  font-family: var(--header-serif);
   font-size: 22px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--header-accent);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -126,7 +132,7 @@ select {
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: #6f1e2a;
+  background: var(--accent-dark);
 }
 
 .btn.danger {
@@ -186,6 +192,236 @@ textarea:focus {
 .badge.manquant {
   background: var(--missing-soft);
   color: var(--missing);
+}
+
+/* ---- Collapsible play header (shared between Répétition & Enregistrement):
+   brand + page label + play title, then the act/scene/character selects. ---- */
+
+.play-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.play-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* actions/pastilles passent à la ligne sur mobile au lieu de déborder */
+  gap: 12px;
+  padding: 10px 18px;
+}
+
+.header-brand {
+  font-family: var(--header-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--header-accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-page-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.play-header-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+}
+
+.play-header-title {
+  font-family: var(--header-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-header-chevron {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.play-header-settings {
+  padding: 0 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selects-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selects-row select {
+  flex: 1;
+  min-width: 130px;
+}
+
+/* ---- Dialogue list + fixed bottom control bar (shared) ---- */
+
+.dialogue-container {
+  max-width: 760px;
+  margin: 0 auto;
+  /* Le padding bas dégage la barre de contrôle fixe (commun aux deux pages). */
+  padding: 16px 16px 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
+  z-index: 100;
+}
+
+.progress-container {
+  /* Zone tactile de 40 px ; la piste visible reste 14 px (le fond est
+     clippé au content-box) et les marges négatives annulent le padding
+     pour ne rien décaler dans la barre. */
+  height: 40px;
+  padding: 13px 0;
+  margin: -13px 0 -3px;
+  background: var(--paper-dark);
+  background-clip: content-box;
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.progress-container:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.15s;
+}
+
+.buttons-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.ctrl-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  background: var(--paper-dark);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ctrl-btn.play {
+  width: 58px;
+  height: 58px;
+  font-size: 22px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* The generic .ctrl-btn:hover (cream) outranks .ctrl-btn.play and would
+   wash the accent circle out under its white glyph: darken instead. */
+.ctrl-btn.play:hover:not(:disabled) {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+/* ---- Dialogue cards (shared look between Répétition & Enregistrement) ---- */
+
+.dialogue-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dialogue-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  /* Même teinte que le filet des autres côtés : un bord transparent laissait
+     une bande blanche « ouverte » sur les répliques sans état. */
+  border-left: 4px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+/* « Mes répliques » : même palette rose/doré sur Répétition et Enregistrement.
+   Les pages posent .mine à côté de leur classe sémantique (.muted / .own). */
+.dialogue-card.mine {
+  background: var(--accent-soft);
+  border-left-color: var(--gold);
+}
+
+.dialogue-card.active {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  box-shadow: 0 2px 10px rgba(139, 38, 53, 0.12);
+}
+
+.dialogue-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dialogue-character {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.dialogue-text {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 /* ---- Layout helpers ---- */
